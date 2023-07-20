@@ -6,12 +6,18 @@
 
 # COMMAND ----------
 
-from datetime import *
+import sys
+import os
+from pathlib import Path
+
 import time
 import calendar
+from datetime import *
+from dateutil.relativedelta import relativedelta
+
 import numpy as np
 import pandas as pd
-from dateutil.relativedelta import relativedelta
+
 from functools import reduce
 
 from pyspark.sql import functions as F
@@ -19,7 +25,16 @@ from pyspark.sql import types as T
 from pyspark.sql import Window
 from pyspark.sql import SparkSession
 
+from utils import files
+
 spark = SparkSession.builder.appName("lmp").getOrCreate()
+
+# COMMAND ----------
+
+conf_mapper = files.conf_reader("../config/etl.json")
+conf_mapper["country"]
+
+# COMMAND ----------
 
 country = 'th'
 store_format = [1,2,3,4,5]

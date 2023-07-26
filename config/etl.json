@@ -1,1 +1,5 @@
-{"country": "th", "decision_date": "2023-06-29", "code_version": "2023-07-22"}
+{"country": "th", 
+"store_format" : [1,2,3,4,5],
+"product_division" : [1,2,3,4,9,10,13],
+"decision_date": "2023-06-29"
+ }

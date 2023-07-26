@@ -1,7 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC
-# MAGIC ## Initialization
+# MAGIC ## Initialization + Load config
 # MAGIC
 
 # COMMAND ----------
@@ -31,35 +30,30 @@ spark = SparkSession.builder.appName("lmp").getOrCreate()
 
 # COMMAND ----------
 
+# DBTITLE 1,Load ETL config
 conf_mapper = files.conf_reader("../config/etl.json")
-conf_mapper["country"]
+country = conf_mapper["country"]
+print(f"Country : {country}")
 
 # COMMAND ----------
 
-country = 'th'
-store_format = [1,2,3,4,5]
-product_division = [1,2,3,4,9,10,13]
-
-# COMMAND ----------
-
-# date_created = '2023-06-29'
-# decision_date = datetime.strptime(date_created, '%Y-%m-%d').date()
-
-decision_date = date.today()
+# DBTITLE 1,Decision date -> define start , end timeframe for txn
+# decision date = latest data end date
+decision_date =  datetime.strptime(conf_mapper["decision_date"], '%Y-%m-%d').date()
 timeframe_end = date(decision_date.year, decision_date.month - 1, 1) - timedelta(days=1)
 timeframe_start = (timeframe_end - relativedelta(months=11)).replace(day=1)
 
-# print(timeframe_start, timeframe_end)
+print(f"decision date : {decision_date}\ntxn start date : {timeframe_start}\ntxn end date : {timeframe_end}")
+print(f"gap days from decision - txn end : {(decision_date - timeframe_end).days}")
+print(f"gap days from txn start - txn end : {(timeframe_end - timeframe_start).days}")
 
-#Get week_id of time frame
+# Get week_id of time frame
 date_dim = spark.table('tdm.v_date_dim').select('week_id', 'date_id', 'period_id', 'quarter_id', 'promoweek_id')
-
 
 start_week = date_dim.filter(F.col('date_id').between(timeframe_start, timeframe_end)).agg(F.min('week_id')).collect()[0][0]
 end_week = date_dim.filter(F.col('date_id').between(timeframe_start, timeframe_end)).agg(F.max('week_id')).collect()[0][0]
 
-# print(start_week, end_week)
-# print(decision_date)
+print(f"start_week : {start_week}, end_week : {end_week}")
 
 # COMMAND ----------
 
@@ -143,9 +137,28 @@ data_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_full_d
 
 # DBTITLE 1,Load Back Data
 # data full year
-data_df = spark.table("tdm_seg.kritawatkrai_th_year_full_data_tmp")
+# data_df = spark.table("tdm_seg.kritawatkrai_th_year_full_data_tmp")
 
 # data_df.display()
+
+# COMMAND ----------
+
+# DBTITLE 1,Get Txn data from 118wk
+txn_cc = (spark.table("tdm_seg.v_latest_txn118wk")
+           .where(F.col("week_id").between(start_week, end_week))
+           .where(F.col("date_id").between(timeframe_start, timeframe_end))
+           .where(F.col("cc_flag").isin(["cc"]))
+           .withColumn("store_region", F.when(F.col("store_region").isNull(), "Unidentified").otherwise(F.col("store_region")))
+)
+
+date_dim = (spark
+            .table('tdm.v_date_dim')
+            .select(['date_id','period_id','quarter_id','year_id','month_id','weekday_nbr',
+                     'day_in_month_nbr','day_in_year_nbr','day_num_sequence','week_num_sequence','promoweek_id'])
+                     .dropDuplicates()
+            )
+
+data_df = txn_cc.join(date_dim, "date_id", "left")
 
 # COMMAND ----------
 
@@ -161,10 +174,10 @@ data_df = spark.table("tdm_seg.kritawatkrai_th_year_full_data_tmp")
 
 # .select('household_id','transaction_uid','tran_datetime','date_id','store_id','week_id','month_id','weekday_nbr','day_in_month_nbr','upc_id','card_issue_date', 'customer_id')\
 time_of_day_df = data_df\
-                        .withColumn('decision_date', lit(decision_date))\
-                        .withColumn('tran_hour', hour(F.col('tran_datetime')))
+                        .withColumn('decision_date', F.lit(decision_date))\
+                        .withColumn('tran_hour', F.hour(F.col('tran_datetime')))
 
-time_of_day_df = time_of_day_df.withColumn('time_of_day', when((F.col('tran_hour') >= 5) & (F.col('tran_hour') <= 8), 'prework')\
+time_of_day_df = time_of_day_df.withColumn('time_of_day', F.when((F.col('tran_hour') >= 5) & (F.col('tran_hour') <= 8), 'prework')\
                                                          .when((F.col('tran_hour') >= 9) & (F.col('tran_hour') <= 11), 'morning')\
                                                          .when(F.col('tran_hour') == 12, 'lunch')\
                                                          .when((F.col('tran_hour') >= 13) & (F.col('tran_hour') <= 17), 'afternoon')\
@@ -172,18 +185,19 @@ time_of_day_df = time_of_day_df.withColumn('time_of_day', when((F.col('tran_hour
                                                          .when(F.col('tran_hour') >= 21, 'late')\
                                                          .when(F.col('tran_hour') <= 4, 'night')\
                                                          .otherwise('def'))\
-                               .withColumn('week_of_month', when(F.col('day_in_month_nbr') <= 7, 1)\
+                               .withColumn('week_of_month', F.when(F.col('day_in_month_nbr') <= 7, 1)\
                                                            .when((F.col('day_in_month_nbr') > 7) & (F.col('day_in_month_nbr') <= 14), 2)\
                                                            .when((F.col('day_in_month_nbr') > 14) & (F.col('day_in_month_nbr') <= 21), 3)\
                                                            .when(F.col('day_in_month_nbr') > 21, 4))\
-                               .withColumn('weekend_flag', when(F.col('weekday_nbr').isin(6,7), lit('Y'))\
+                               .withColumn('weekend_flag', F.when(F.col('weekday_nbr').isin(6,7), F.lit('Y'))\
                                                           .when((F.col('weekday_nbr') == 5) & (F.col('time_of_day').isin('evening', 'late')), 'Y')\
                                                           .otherwise('N'))\
-                               .withColumn('region', when(F.col('region').isNull(), lit('Unidentified'))\
+                               .withColumn('region', F.when(F.col('region').isNull(), F.lit('Unidentified'))\
                                                      .otherwise(F.col('region')))
 
+# COMMAND ----------
 
-# ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# DBTITLE 1,Flag time of day, week of month
 # festival flag (+- 1 from last week in december) = xmas
 # month_id ends with 4 = april
 

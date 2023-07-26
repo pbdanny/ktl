@@ -90,7 +90,7 @@ customer_df = spark.table('tdm.v_customer_dim').select(['customer_id','household
 store_df = spark.table('tdm.v_store_dim_c').select('store_id','format_id','region')\
                                                 .filter(F.col('format_id').isin(store_format))\
                                                 .filter(F.col('country') == country)\
-                                                .withColumn('format_name', when(F.col('format_id').isin([1,2,3]), 'Hypermarket')\
+                                                .withColumn('format_name',F.when(F.col('format_id').isin([1,2,3]), 'Hypermarket')\
                                                                              .when(F.col('format_id') == 4, 'Supermarket')\
                                                                              .when(F.col('format_id') == 5, 'Mini Supermarket')\
                                                                              .otherwise(F.col('format_id')))\
@@ -101,11 +101,11 @@ data_df = item_df.join(header_df, on=['transaction_uid','store_id','date_id'], h
                  .join(store_df, on='store_id', how='inner')\
                  .join(date_df, on='date_id', how='left')\
                  .join(customer_df, on='customer_id', how='left')\
-                 .withColumn('unique_transaction_uid', concat_ws('_', col('transaction_uid'), col('store_id'), col('date_id')))\
-                 .withColumn('unit', when(F.col('count_qty').isNotNull(), col('product_qty'))\
+                 .withColumn('unique_transaction_uid',F.concat_ws('_',F.col('transaction_uid'),F.col('store_id'),F.col('date_id')))\
+                 .withColumn('unit',F.when(F.col('count_qty').isNotNull(),F.col('product_qty'))\
                  .otherwise(F.col('measured_qty')))
 
-data_df = data_df.withColumn('channel_group_forlotuss', when(F.col('channel')=='OFFLINE', 'OFFLINE')\
+data_df = data_df.withColumn('channel_group_forlotuss',F.when(F.col('channel')=='OFFLINE', 'OFFLINE')\
                                       .when(F.col('channel').isin('Click and Collect','Scheduled CC'), 'Click & Collect')\
                                       .when(F.col('channel').isin('HATO'), 'Line HATO')\
                                       .when(F.col('channel').isin('GHS 1','GHS 2','GHS APP','Scheduled HD'), 'Scheduled HD')\
@@ -122,12 +122,12 @@ data_df = data_df.withColumn('channel_group_forlotuss', when(F.col('channel')=='
                                       .when(F.col('channel').isin('TRUE SMART QR'), 'Others')\
                                       .otherwise(lit('OFFLINE')))
 
-data_df = data_df.withColumn('format_name', when(F.col('channel_group_forlotuss').isin("Scheduled HD","Electronic Mall","OnDemand","OnDemand Hypermarket"
+data_df = data_df.withColumn('format_name',F.when(F.col('channel_group_forlotuss').isin("Scheduled HD","Electronic Mall","OnDemand","OnDemand Hypermarket"
                                                                                            ,"Click & Collect","Line HATO","Marketplace","Aggregator","Others")
-                                                       , lit('ONLINE'))\
+                                                       ,F.lit('ONLINE'))\
                                                             .otherwise(F.col('format_name')))
 
-data_df = data_df.withColumn('channel_flag', when(F.col('format_name').isin('Hypermarket','Supermarket','Mini Super'), lit('OFFLINE')).otherwise(lit('ONLINE')))
+data_df = data_df.withColumn('channel_flag',F.when(F.col('format_name').isin('Hypermarket','Supermarket','Mini Super'),F.lit('OFFLINE')).otherwise(lit('ONLINE')))
 
 
 data_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_full_data_tmp")
@@ -215,7 +215,7 @@ week_after = df_with_lag_lead.filter(F.col("week_id") == max_week_december).sele
 xmas_week_id = [week_before, max_week_december, week_after]
 
 
-time_of_day_df = time_of_day_df.withColumn('fest_flag', when(F.col('week_id').isin(xmas_week_id), 'XMAS')\
+time_of_day_df = time_of_day_df.withColumn('fest_flag',F.when(F.col('week_id').isin(xmas_week_id), 'XMAS')\
                                                        .when(F.col('month_id').cast('string').endswith('04'), 'APRIL')\
                                                        .otherwise('NONE'))
 
@@ -229,14 +229,14 @@ date_df = spark.table('tdm.v_date_dim').select(['date_id','period_id','quarter_i
                                             .dropDuplicates()
 
 last_sat = date_df.filter(F.col('weekday_nbr') == 6).groupBy('month_id').agg(F.max('day_in_month_nbr').alias('day_in_month_nbr'))\
-                                                  .withColumn('last_weekend_flag', lit('Y'))
+                                                  .withColumn('last_weekend_flag',F.lit('Y'))
 
 last_sat_df = date_df.select('date_id', 'month_id', 'day_in_month_nbr')\
                      .join(last_sat, on=['month_id','day_in_month_nbr'],how='inner')
 
-last_weekend_df = last_sat_df.select(F.col('month_id'), col('day_in_month_nbr'), col('date_id'), col('last_weekend_flag')) \
-                 .unionAll(last_sat_df.select(F.col('month_id'), col('day_in_month_nbr'), date_add(F.col('date_id'), 1).alias('date_id'), col('last_weekend_flag'))) \
-                 .unionAll(last_sat_df.select(F.col('month_id'), col('day_in_month_nbr'), date_sub(F.col('date_id'), 1).alias('date_id'), col('last_weekend_flag')))
+last_weekend_df = last_sat_df.select(F.col('month_id'),F.col('day_in_month_nbr'),F.col('date_id'),F.col('last_weekend_flag')) \
+                 .unionAll(last_sat_df.select(F.col('month_id'),F.col('day_in_month_nbr'), date_add(F.col('date_id'), 1).alias('date_id'),F.col('last_weekend_flag'))) \
+                 .unionAll(last_sat_df.select(F.col('month_id'),F.col('day_in_month_nbr'), date_sub(F.col('date_id'), 1).alias('date_id'),F.col('last_weekend_flag')))
 
 last_weekend_df = last_weekend_df.select('date_id', 'last_weekend_flag')
 
@@ -252,26 +252,26 @@ flagged_df = time_of_day_df.join(last_weekend_df, on='date_id',how='left')\
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Recency and Tenure Flag
 
-r = flagged_df.withColumn('end_date', lit(timeframe_end))\
-          .withColumn('start_date', lit(timeframe_start))\
+r = flagged_df.withColumn('end_date',F.lit(timeframe_end))\
+          .withColumn('start_date',F.lit(timeframe_start))\
           .withColumn('start_month_date', trunc(F.col('date_id'), 'month'))\
           .withColumn('end_month_date', last_day(F.col('start_month_date')))\
-          .withColumn('months_from_end_date', months_between(F.col('end_date'), col('end_month_date')) + 1)\
-          .withColumn('last_3_flag', when(F.col('months_from_end_date') <= 3 , 'Y')\
+          .withColumn('months_from_end_date', months_between(F.col('end_date'),F.col('end_month_date')) + 1)\
+          .withColumn('last_3_flag',F.when(F.col('months_from_end_date') <= 3 , 'Y')\
                                     .otherwise('N'))\
-          .withColumn('last_6_flag', when(F.col('months_from_end_date') <= 6 , 'Y')\
+          .withColumn('last_6_flag',F.when(F.col('months_from_end_date') <= 6 , 'Y')\
                                               .otherwise('N'))\
-          .withColumn('last_9_flag', when(F.col('months_from_end_date') <= 9 , 'Y')\
+          .withColumn('last_9_flag',F.when(F.col('months_from_end_date') <= 9 , 'Y')\
                                     .otherwise('N'))\
-          .withColumn('q1_flag', when(F.col('months_from_end_date') <= 3 , 'Y')\
+          .withColumn('q1_flag',F.when(F.col('months_from_end_date') <= 3 , 'Y')\
                                               .otherwise('N'))\
-          .withColumn('q2_flag', when((F.col('months_from_end_date') > 3) & (F.col('months_from_end_date') <= 6) , 'Y')\
+          .withColumn('q2_flag',F.when((F.col('months_from_end_date') > 3) & (F.col('months_from_end_date') <= 6) , 'Y')\
                                     .otherwise('N'))\
-          .withColumn('q3_flag', when((F.col('months_from_end_date') > 6) & (F.col('months_from_end_date') <= 9) , 'Y')\
+          .withColumn('q3_flag',F.when((F.col('months_from_end_date') > 6) & (F.col('months_from_end_date') <= 9) , 'Y')\
                                               .otherwise('N'))\
-          .withColumn('q4_flag', when(F.col('months_from_end_date') > 9 , 'Y')\
+          .withColumn('q4_flag',F.when(F.col('months_from_end_date') > 9 , 'Y')\
                                               .otherwise('N'))\
-          .withColumn('app_year_qtr', when(F.col('q1_flag') == 'Y', 'Q1')\
+          .withColumn('app_year_qtr',F.when(F.col('q1_flag') == 'Y', 'Q1')\
                                      .when(F.col('q2_flag') == 'Y', 'Q2')\
                                      .when(F.col('q3_flag') == 'Y', 'Q3')\
                                      .when(F.col('q4_flag') == 'Y', 'Q4')\
@@ -289,11 +289,11 @@ temp_prod_df = product_df.select('upc_id', 'subclass_code', 'subclass_name')
 
 premium_prod_df = temp_prod_df.filter(F.col('subclass_name').ilike('%PREMIUM%'))\
                               .filter(~col('subclass_name').ilike('%COUPON%'))\
-                              .withColumn('price_level', lit('PREMIUM'))\
+                              .withColumn('price_level',F.lit('PREMIUM'))\
                               .distinct()
 
 budget_prod_df = temp_prod_df.filter(F.col('subclass_name').rlike('(?i)(budget|basic|value)'))\
-                             .withColumn('price_level', lit('BUDGET'))\
+                             .withColumn('price_level',F.lit('BUDGET'))\
                              .distinct()
 
 price_level_df = premium_prod_df.unionByName(budget_prod_df)
@@ -326,8 +326,8 @@ resa_tender = (
     )
     .withColumn(
         "sngl_tndr_type",
-        when(F.col("n_tndr_type") == 1, col("tender_type_group")).otherwise(
-            lit("MULTI")
+       F.when(F.col("n_tndr_type") == 1,F.col("tender_type_group")).otherwise(
+           F.lit("MULTI")
         ),
     )
     # Adjust to support new unique txn_uid from surrogate key
@@ -356,8 +356,8 @@ oms_tender = (
     )
     .withColumn(
         "sngl_tndr_type",
-        when(F.col("n_tndr_type") == 1, col("PaymentMethod")).otherwise(
-            lit("MULTI")
+       F.when(F.col("n_tndr_type") == 1,F.col("PaymentMethod")).otherwise(
+           F.lit("MULTI")
         ),
     )
     # Adjust to support new unique txn_uid from surrogate key
@@ -366,8 +366,8 @@ oms_tender = (
     .drop_duplicates()
 )
 
-resa_tender = resa_tender.withColumn("oms", lit(False))
-oms_tender = oms_tender.withColumn("oms", lit(True))
+resa_tender = resa_tender.withColumn("oms",F.lit(False))
+oms_tender = oms_tender.withColumn("oms",F.lit(True))
 
 filter_resa_tender = resa_tender.filter(F.col('date_id').between(timeframe_start, timeframe_end))
 
@@ -383,9 +383,9 @@ flag_df = more_flagged_df.join(filter_resa_tender.select('transaction_uid','stor
                                     on=['transaction_uid', 'store_id', 'date_id'], how='left')\
                               .join(filter_oms_tender.select('transaction_uid','oms_payment_method'), on='transaction_uid', how='left')
 
-flag_df = flag_df.withColumn('resa_payment_method', when(F.col('resa_payment_method').isNull(), lit('Unidentified'))\
+flag_df = flag_df.withColumn('resa_payment_method',F.when(F.col('resa_payment_method').isNull(),F.lit('Unidentified'))\
                                                              .otherwise(F.col('resa_payment_method')))\
-                           .withColumn('payment_flag', when((F.col('resa_payment_method') == 'CASH') | (F.col('oms_payment_method') == 'CASH'), 'CASH')\
+                           .withColumn('payment_flag',F.when((F.col('resa_payment_method') == 'CASH') | (F.col('oms_payment_method') == 'CASH'), 'CASH')\
                                                       .when((F.col('resa_payment_method') == 'CCARD') | (F.col('oms_payment_method') == 'CreditCard'), 'CARD')\
                                                       .when((F.col('resa_payment_method') == 'COUPON'), 'COUPON')\
                                                       .when((F.col('resa_payment_method') == 'VOUCH'), 'VOUCHER')\
@@ -396,10 +396,10 @@ first_tran = spark.table('tdm_seg.mylotuss_customer_1st_txn_V1').select('golden_
                                                                      .withColumnRenamed('tran_datetime', 'first_tran_datetime')
 
 flag_df = flag_df.join(first_tran, on='golden_record_external_id_hash', how='left')\
-                           .withColumn('card_issue_date', when(F.col('card_issue_date').isNull(), col('first_tran_datetime'))\
+                           .withColumn('card_issue_date',F.when(F.col('card_issue_date').isNull(),F.col('first_tran_datetime'))\
                                                          .otherwise(F.col('card_issue_date')))\
-                           .withColumn('CC_TENURE', round((datediff(F.col('end_date'), col('card_issue_date'))) / 365,1))\
-                           .withColumn('one_year_history', when(F.col('first_tran_datetime') <= col('date_id'), 1)\
+                           .withColumn('CC_TENURE', round((datediff(F.col('end_date'),F.col('card_issue_date'))) / 365,1))\
+                           .withColumn('one_year_history',F.when(F.col('first_tran_datetime') <=F.col('date_id'), 1)\
                                                           .otherwise(0))
                                                       
 # removing traders 
@@ -460,7 +460,7 @@ df_trans_item = spark.table('tdm.v_transaction_item').filter(F.col('week_id').be
 
 df_store = spark.table('tdm.v_store_dim_c').filter(F.col('format_id').isin(store_format))\
                                                 .filter(F.col('country') == country)\
-                                                .withColumn('format_name', when(F.col('format_id').isin([1,2,3]), 'Hypermarket')\
+                                                .withColumn('format_name',F.when(F.col('format_id').isin([1,2,3]), 'Hypermarket')\
                                                                              .when(F.col('format_id') == 4, 'Supermarket')\
                                                                              .when(F.col('format_id') == 5, 'Mini Supermarket')\
                                                                              .otherwise(F.col('format_id')))\
@@ -486,7 +486,7 @@ df_promo_exploded = df_promo_join.join(df_date_join,
                                           (df_promo_join['promo_end_date'] >= df_date_join['date_id'])),
                                        how='inner')
 
-df_store_join = df_store.withColumn('store_format_name', when(F.col('format_id') == 5, 'GOFRESH') \
+df_store_join = df_store.withColumn('store_format_name',F.when(F.col('format_id') == 5, 'GOFRESH') \
                                                                    .when(F.col('format_id') == 4, 'TALAD')
                                                                    .when(F.col('format_id').isin([1, 2, 3]), 'HDE')) \
                         .select('store_id', 'store_format_name').drop_duplicates()
@@ -506,12 +506,12 @@ non_promo_df = flag_df.join(promo_df, on=['household_id', 'transaction_uid', 'st
 # COMMAND ----------
 
 # DBTITLE 1,Flagging Promo
-promo_df = promo_df.withColumn('discount_reason_code', lit('P'))\
-                   .withColumn('promo_flag', lit('PROMO'))
+promo_df = promo_df.withColumn('discount_reason_code',F.lit('P'))\
+                   .withColumn('promo_flag',F.lit('PROMO'))
 
-non_promo_df = non_promo_df.withColumn('discount_reason_code', when((F.col('discount_amt') > 0), 'M')\
+non_promo_df = non_promo_df.withColumn('discount_reason_code',F.when((F.col('discount_amt') > 0), 'M')\
                                                               .otherwise('NONE'))\
-                           .withColumn('promo_flag', when(F.col('discount_reason_code') == 'M', 'MARK_DOWN')\
+                           .withColumn('promo_flag',F.when(F.col('discount_reason_code') == 'M', 'MARK_DOWN')\
                                                     .otherwise(F.col('discount_reason_code')))
                            
 full_promo_df = promo_df.unionByName(non_promo_df)
@@ -541,7 +541,7 @@ sec_exclude = ['3_7_130', '3_7_131', '3_8_132', '3_9_81', '10_43_34', '3_14_78',
     '13_6_316', '13_25_249', '13_25_250', '13_25_251', '13_67_359', '13_32_617', '13_67_360', '2_4_719']
 10
 div_cust = product_df.select('division_id').distinct()\
-                     .withColumn('household_id', lit(-1))
+                     .withColumn('household_id',F.lit(-1))
 1
 dep_schema = StructType([
     StructField("department_code", StringType(), nullable=False),
@@ -553,7 +553,7 @@ missing_dep = [("2_33", -1)]
 missing_dep_df = spark.createDataFrame(missing_dep, dep_schema)
 
 dep_cust = product_df.select('department_code').filter(~(F.col('department_code').isin(dep_exclude))).distinct()\
-                          .withColumn('household_id', lit(-1))\
+                          .withColumn('household_id',F.lit(-1))\
                           .unionByName(missing_dep_df)
 
 sec_schema = StructType([
@@ -568,15 +568,15 @@ missing_sec = [("3_14_80", -1),
 missing_sec_df = spark.createDataFrame(missing_sec, sec_schema)
 
 sec_cust = product_df.select('section_code').filter(~(F.col('section_code').isin(sec_exclude))).distinct()\
-                          .withColumn('household_id', lit(-1))\
+                          .withColumn('household_id',F.lit(-1))\
                           .unionByName(missing_sec_df)
 
 flag_promo_df = flag_promo_df.unionByName(div_cust, allowMissingColumns=True)\
                            .unionByName(dep_cust, allowMissingColumns=True)\
                            .unionByName(sec_cust, allowMissingColumns=True)\
-                           .withColumn('grouped_department_code', when(F.col('department_code').isin('13_79', '13_77', '13_78'), '13_77&13_78&13_79')\
+                           .withColumn('grouped_department_code',F.when(F.col('department_code').isin('13_79', '13_77', '13_78'), '13_77&13_78&13_79')\
                                                                   .otherwise(F.col('department_code')))\
-                           .withColumn('grouped_section_code', when(F.col('section_code').isin('1_2_187', '1_2_86'), '1_2_187&1_2_86')\
+                           .withColumn('grouped_section_code',F.when(F.col('section_code').isin('1_2_187', '1_2_86'), '1_2_187&1_2_86')\
                                                                 .when(F.col('section_code').isin('3_14_50', '3_51_416'), '3_14_50&3_51_416')\
                                                                 .when(F.col('section_code').isin('2_3_195', '2_3_52'), '2_3_195&2_3_52')\
                                                                 .otherwise(F.col('section_code')))
@@ -604,9 +604,9 @@ full_flag_df = spark.table('tdm_seg.kritawatkrai_th_year_full_data_w_promo_w_dum
 
 # DBTITLE 1,Total Spend Unit Visit
 total_df = full_flag_df.groupBy('household_id')\
-                       .agg(sum('net_spend_amt').alias('Total_Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Total_Visits'), \
-                        sum('unit').alias('Total_Units'))
+                       .agg(F.sum('net_spend_amt').alias('Total_Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Total_Visits'), \
+                        F.sum('unit').alias('Total_Units'))
                        
 # total_df.display()
 
@@ -621,21 +621,21 @@ total_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_total
 # filter out dummy of dep and sec
 div_df = full_flag_df.filter((F.col('division_id').isNotNull()))\
                        .groupBy('household_id','division_id')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                        
 div_df = div_df.join(total_df, on='household_id', how='inner')
 
-div_df = div_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+div_df = div_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
             
 # div_df.display()
 
@@ -683,21 +683,21 @@ pivoted_div_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year
 #LAST 3
 l3_div_df = full_flag_df.filter(F.col('last_3_flag') == 'Y')\
                        .groupBy('household_id','division_id')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                        
 l3_div_df = l3_div_df.join(total_df, on='household_id', how='inner')
 
-l3_div_df = l3_div_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+l3_div_df = l3_div_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
 # div_df.display()
 
@@ -735,21 +735,21 @@ pivoted_l3_div_df = pivoted_l3_div_df.filter(~(F.col('household_id') == -1))
 
 l6_div_df = full_flag_df.filter(F.col('last_6_flag') == 'Y')\
                        .groupBy('household_id','division_id')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                        
 l6_div_df = l6_div_df.join(total_df, on='household_id', how='inner')
 
-l6_div_df = l6_div_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+l6_div_df = l6_div_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
 # div_df.display()
 
@@ -789,21 +789,21 @@ pivoted_l6_div_df = pivoted_l6_div_df.filter(~(F.col('household_id') == -1))
 
 l9_div_df = full_flag_df.filter(F.col('last_9_flag') == 'Y')\
                        .groupBy('household_id','division_id')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                        
 l9_div_df = l9_div_df.join(total_df, on='household_id', how='inner')
 
-l9_div_df = l9_div_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+l9_div_df = l9_div_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
 # div_df.display()
 
@@ -855,21 +855,21 @@ pivoted_l9_div_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_y
 dep_df = full_flag_df.filter((F.col('grouped_department_code').isNotNull()))\
                         .filter(~(F.col('grouped_department_code').isin(dep_exclude)))\
                        .groupBy('household_id','grouped_department_code')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                        
 dep_df = dep_df.join(total_df, on='household_id', how='inner')
 
-dep_df = dep_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+dep_df = dep_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
 # dep_df.display()
 
@@ -915,21 +915,21 @@ pivoted_dep_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year
 l3_dep_df = full_flag_df.filter(~(F.col('grouped_department_code').isin(dep_exclude)))\
                        .filter(F.col('last_3_flag') == 'Y')\
                        .groupBy('household_id','grouped_department_code')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                        
 l3_dep_df = l3_dep_df.join(total_df, on='household_id', how='inner')
 
-l3_dep_df = l3_dep_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+l3_dep_df = l3_dep_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
 # dep_df.display()
 
@@ -968,21 +968,21 @@ pivoted_l3_dep_df = pivoted_l3_dep_df.filter(~(F.col('household_id') == -1))
 l6_dep_df = full_flag_df.filter(~(F.col('grouped_department_code').isin(dep_exclude)))\
                        .filter(F.col('last_6_flag') == 'Y')\
                        .groupBy('household_id','grouped_department_code')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                        
 l6_dep_df = l6_dep_df.join(total_df, on='household_id', how='inner')
 
-l6_dep_df = l6_dep_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+l6_dep_df = l6_dep_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
 # dep_df.display()
 
@@ -1022,21 +1022,21 @@ pivoted_l6_dep_df = pivoted_l6_dep_df.filter(~(F.col('household_id') == -1))
 l9_dep_df = full_flag_df.filter(~(F.col('grouped_department_code').isin(dep_exclude)))\
                        .filter(F.col('last_9_flag') == 'Y')\
                        .groupBy('household_id','grouped_department_code')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                        
 l9_dep_df = l9_dep_df.join(total_df, on='household_id', how='inner')
 
-l9_dep_df = l9_dep_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+l9_dep_df = l9_dep_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
 # dep_df.display()
 
@@ -1083,21 +1083,21 @@ pivoted_l9_dep_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_y
 sec_df = full_flag_df.filter((F.col('grouped_section_code').isNotNull()))\
                        .filter(~(F.col('grouped_section_code').isin(sec_exclude)))\
                        .groupBy('household_id','grouped_section_code')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                                                
 sec_df = sec_df.join(total_df, on='household_id', how='inner')
 
-sec_df = sec_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+sec_df = sec_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
       
 # sec_df.display()
 
@@ -1143,24 +1143,24 @@ full_flag_df = full_flag_df.filter(~(F.col('household_id') == -1))
 
 # DBTITLE 1,Monthly
 monthly_df = full_flag_df.groupBy('household_id', 'end_month_date')\
-                                .agg(sum('net_spend_amt').alias('Spend'), \
-                                countDistinct('unique_transaction_uid').alias('Visits'), \
-                                sum('unit').alias('Units'))\
+                                .agg(F.sum('net_spend_amt').alias('Spend'), \
+                               F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                                F.sum('unit').alias('Units'))\
                                 .fillna(0)
 
 monthly_df = monthly_df.groupBy('household_id').agg(
-        round(avg(coalesce(F.col("Spend"), lit(0))), 2).alias("AVG_SPEND_MNTH"),
-        round(stddev(coalesce(F.col("Spend"), lit(0))), 2).alias("SD_SPEND_MNTH"),
-        round(F.min(coalesce(F.col("Spend"), lit(0))), 2).alias("MIN_SPEND_MNTH"),
-        round(F.max(coalesce(F.col("Spend"), lit(0))), 2).alias("MAX_SPEND_MNTH"),
-        round(avg(coalesce(F.col("Visits"), lit(0))), 2).alias("AVG_VISITS_MNTH"),
-        round(stddev(coalesce(F.col("Visits"), lit(0))), 2).alias("SD_VISITS_MNTH"),
-        round(F.min(coalesce(F.col("Visits"), lit(0))), 2).alias("MIN_VISITS_MNTH"),
-        round(F.max(coalesce(F.col("Visits"), lit(0))), 2).alias("MAX_VISITS_MNTH"),
-        round(avg(coalesce(F.col("Units"), lit(0))), 2).alias("AVG_UNITS_MNTH"),
-        round(stddev(coalesce(F.col("Units"), lit(0))), 2).alias("SD_UNITS_MNTH"),
-        round(F.min(coalesce(F.col("Units"), lit(0))), 2).alias("MIN_UNITS_MNTH"),
-        round(F.max(coalesce(F.col("Units"), lit(0))), 2).alias("MAX_UNITS_MNTH")
+        round(F.avg(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("AVG_SPEND_MNTH"),
+        round(F.stddev(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("SD_SPEND_MNTH"),
+        round(F.min(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("MIN_SPEND_MNTH"),
+        round(F.max(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("MAX_SPEND_MNTH"),
+        round(F.avg(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("AVG_VISITS_MNTH"),
+        round(F.stddev(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("SD_VISITS_MNTH"),
+        round(F.min(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("MIN_VISITS_MNTH"),
+        round(F.max(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("MAX_VISITS_MNTH"),
+        round(F.avg(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("AVG_UNITS_MNTH"),
+        round(F.stddev(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("SD_UNITS_MNTH"),
+        round(F.min(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("MIN_UNITS_MNTH"),
+        round(F.max(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("MAX_UNITS_MNTH")
 ).fillna(0)
 
     
@@ -1179,21 +1179,21 @@ monthly_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_mon
 #Q1
 qtr1_df = full_flag_df.filter(F.col('q1_flag') == 'Y')\
                        .groupBy('household_id','app_year_qtr')\
-                       .agg(sum('net_spend_amt').alias('Q1_SPEND'), \
-                        countDistinct('unique_transaction_uid').alias('Q1_VISITS'), \
-                        sum('unit').alias('Q1_UNITS'))
+                       .agg(F.sum('net_spend_amt').alias('Q1_SPEND'), \
+                       F.count_distinct('unique_transaction_uid').alias('Q1_VISITS'), \
+                        F.sum('unit').alias('Q1_UNITS'))
                                                
 qtr1_df = qtr1_df.join(total_df, on='household_id', how='inner')
 
-qtr1_df = qtr1_df.withColumn('Q1_SPV', when((F.col('Q1_VISITS').isNull()) | (F.col('Q1_VISITS') == 0), 0)\
-                                 .otherwise(F.col('Q1_SPEND') / col('Q1_VISITS')))\
-               .withColumn('Q1_UPV', when((F.col('Q1_VISITS').isNull()) | (F.col('Q1_VISITS') == 0), 0)\
-                                 .otherwise(F.col('Q1_UNITS') / col('Q1_VISITS')))\
-               .withColumn('Q1_SPU', when((F.col('Q1_UNITS').isNull()) | (F.col('Q1_UNITS') == 0), 0)\
-                                 .otherwise(F.col('Q1_SPEND') / col('Q1_UNITS')))\
-               .withColumn('PCT_Q1_SPEND', col('Q1_SPEND') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Q1_VISITS', col('Q1_VISITS') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Q1_UNITS', col('Q1_UNITS') * 100 / col('Total_Units'))\
+qtr1_df = qtr1_df.withColumn('Q1_SPV',F.when((F.col('Q1_VISITS').isNull()) | (F.col('Q1_VISITS') == 0), 0)\
+                                 .otherwise(F.col('Q1_SPEND') /F.col('Q1_VISITS')))\
+               .withColumn('Q1_UPV',F.when((F.col('Q1_VISITS').isNull()) | (F.col('Q1_VISITS') == 0), 0)\
+                                 .otherwise(F.col('Q1_UNITS') /F.col('Q1_VISITS')))\
+               .withColumn('Q1_SPU',F.when((F.col('Q1_UNITS').isNull()) | (F.col('Q1_UNITS') == 0), 0)\
+                                 .otherwise(F.col('Q1_SPEND') /F.col('Q1_UNITS')))\
+               .withColumn('PCT_Q1_SPEND',F.col('Q1_SPEND') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Q1_VISITS',F.col('Q1_VISITS') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Q1_UNITS',F.col('Q1_UNITS') * 100 /F.col('Total_Units'))\
                .drop('Total_Spend', 'Total_Visits', 'Total_Units', 'app_year_qtr')
 
 # qtr1_df.display()
@@ -1204,21 +1204,21 @@ qtr1_df = qtr1_df.withColumn('Q1_SPV', when((F.col('Q1_VISITS').isNull()) | (F.c
 
 qtr2_df = full_flag_df.filter(F.col('q2_flag') == 'Y')\
                        .groupBy('household_id','app_year_qtr')\
-                       .agg(sum('net_spend_amt').alias('Q2_SPEND'), \
-                        countDistinct('unique_transaction_uid').alias('Q2_VISITS'), \
-                        sum('unit').alias('Q2_UNITS'))
+                       .agg(F.sum('net_spend_amt').alias('Q2_SPEND'), \
+                       F.count_distinct('unique_transaction_uid').alias('Q2_VISITS'), \
+                        F.sum('unit').alias('Q2_UNITS'))
 
 qtr2_df = qtr2_df.join(total_df, on='household_id', how='inner')
 
-qtr2_df = qtr2_df.withColumn('Q2_SPV', when((F.col('Q2_VISITS').isNull()) | (F.col('Q2_VISITS') == 0), 0)\
-                                 .otherwise(F.col('Q2_SPEND') / col('Q2_VISITS')))\
-               .withColumn('Q2_UPV', when((F.col('Q2_VISITS').isNull()) | (F.col('Q2_VISITS') == 0), 0)\
-                                 .otherwise(F.col('Q2_UNITS') / col('Q2_VISITS')))\
-               .withColumn('Q2_SPU', when((F.col('Q2_UNITS').isNull()) | (F.col('Q2_UNITS') == 0), 0)\
-                                 .otherwise(F.col('Q2_SPEND') / col('Q2_UNITS')))\
-               .withColumn('PCT_Q2_SPEND', col('Q2_SPEND') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Q2_VISITS', col('Q2_VISITS') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Q2_UNITS', col('Q2_UNITS') * 100 / col('Total_Units'))\
+qtr2_df = qtr2_df.withColumn('Q2_SPV',F.when((F.col('Q2_VISITS').isNull()) | (F.col('Q2_VISITS') == 0), 0)\
+                                 .otherwise(F.col('Q2_SPEND') /F.col('Q2_VISITS')))\
+               .withColumn('Q2_UPV',F.when((F.col('Q2_VISITS').isNull()) | (F.col('Q2_VISITS') == 0), 0)\
+                                 .otherwise(F.col('Q2_UNITS') /F.col('Q2_VISITS')))\
+               .withColumn('Q2_SPU',F.when((F.col('Q2_UNITS').isNull()) | (F.col('Q2_UNITS') == 0), 0)\
+                                 .otherwise(F.col('Q2_SPEND') /F.col('Q2_UNITS')))\
+               .withColumn('PCT_Q2_SPEND',F.col('Q2_SPEND') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Q2_VISITS',F.col('Q2_VISITS') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Q2_UNITS',F.col('Q2_UNITS') * 100 /F.col('Total_Units'))\
                .drop('Total_Spend', 'Total_Visits', 'Total_Units', 'app_year_qtr')
 
 
@@ -1230,21 +1230,21 @@ qtr2_df = qtr2_df.withColumn('Q2_SPV', when((F.col('Q2_VISITS').isNull()) | (F.c
 
 qtr3_df = full_flag_df.filter(F.col('q3_flag') == 'Y')\
                        .groupBy('household_id','app_year_qtr')\
-                       .agg(sum('net_spend_amt').alias('Q3_SPEND'), \
-                        countDistinct('unique_transaction_uid').alias('Q3_VISITS'), \
-                        sum('unit').alias('Q3_UNITS'))
+                       .agg(F.sum('net_spend_amt').alias('Q3_SPEND'), \
+                       F.count_distinct('unique_transaction_uid').alias('Q3_VISITS'), \
+                        F.sum('unit').alias('Q3_UNITS'))
                                                
 qtr3_df = qtr3_df.join(total_df, on='household_id', how='inner')
 
-qtr3_df = qtr3_df.withColumn('Q3_SPV', when((F.col('Q3_VISITS').isNull()) | (F.col('Q3_VISITS') == 0), 0)\
-                                 .otherwise(F.col('Q3_SPEND') / col('Q3_VISITS')))\
-               .withColumn('Q3_UPV', when((F.col('Q3_VISITS').isNull()) | (F.col('Q3_VISITS') == 0), 0)\
-                                 .otherwise(F.col('Q3_UNITS') / col('Q3_VISITS')))\
-               .withColumn('Q3_SPU', when((F.col('Q3_UNITS').isNull()) | (F.col('Q3_UNITS') == 0), 0)\
-                                 .otherwise(F.col('Q3_SPEND') / col('Q3_UNITS')))\
-               .withColumn('PCT_Q3_SPEND', col('Q3_SPEND') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Q3_VISITS', col('Q3_VISITS') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Q3_UNITS', col('Q3_UNITS') * 100 / col('Total_Units'))\
+qtr3_df = qtr3_df.withColumn('Q3_SPV',F.when((F.col('Q3_VISITS').isNull()) | (F.col('Q3_VISITS') == 0), 0)\
+                                 .otherwise(F.col('Q3_SPEND') /F.col('Q3_VISITS')))\
+               .withColumn('Q3_UPV',F.when((F.col('Q3_VISITS').isNull()) | (F.col('Q3_VISITS') == 0), 0)\
+                                 .otherwise(F.col('Q3_UNITS') /F.col('Q3_VISITS')))\
+               .withColumn('Q3_SPU',F.when((F.col('Q3_UNITS').isNull()) | (F.col('Q3_UNITS') == 0), 0)\
+                                 .otherwise(F.col('Q3_SPEND') /F.col('Q3_UNITS')))\
+               .withColumn('PCT_Q3_SPEND',F.col('Q3_SPEND') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Q3_VISITS',F.col('Q3_VISITS') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Q3_UNITS',F.col('Q3_UNITS') * 100 /F.col('Total_Units'))\
                .drop('Total_Spend', 'Total_Visits', 'Total_Units', 'app_year_qtr')
 
 # qtr1_df.display()
@@ -1255,21 +1255,21 @@ qtr3_df = qtr3_df.withColumn('Q3_SPV', when((F.col('Q3_VISITS').isNull()) | (F.c
 
 qtr4_df = full_flag_df.filter(F.col('q4_flag') == 'Y')\
                        .groupBy('household_id','app_year_qtr')\
-                       .agg(sum('net_spend_amt').alias('Q4_SPEND'), \
-                        countDistinct('unique_transaction_uid').alias('Q4_VISITS'), \
-                        sum('unit').alias('Q4_UNITS'))
+                       .agg(F.sum('net_spend_amt').alias('Q4_SPEND'), \
+                       F.count_distinct('unique_transaction_uid').alias('Q4_VISITS'), \
+                        F.sum('unit').alias('Q4_UNITS'))
                                                
 qtr4_df = qtr4_df.join(total_df, on='household_id', how='inner')
 
-qtr4_df = qtr4_df.withColumn('Q4_SPV', when((F.col('Q4_VISITS').isNull()) | (F.col('Q4_VISITS') == 0), 0)\
-                                 .otherwise(F.col('Q4_SPEND') / col('Q4_VISITS')))\
-               .withColumn('Q4_UPV', when((F.col('Q4_VISITS').isNull()) | (F.col('Q4_VISITS') == 0), 0)\
-                                 .otherwise(F.col('Q4_UNITS') / col('Q4_VISITS')))\
-               .withColumn('Q4_SPU', when((F.col('Q4_UNITS').isNull()) | (F.col('Q4_UNITS') == 0), 0)\
-                                 .otherwise(F.col('Q4_SPEND') / col('Q4_UNITS')))\
-               .withColumn('PCT_Q4_SPEND', col('Q4_SPEND') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Q4_VISITS', col('Q4_VISITS') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Q4_UNITS', col('Q4_UNITS') * 100 / col('Total_Units'))\
+qtr4_df = qtr4_df.withColumn('Q4_SPV',F.when((F.col('Q4_VISITS').isNull()) | (F.col('Q4_VISITS') == 0), 0)\
+                                 .otherwise(F.col('Q4_SPEND') /F.col('Q4_VISITS')))\
+               .withColumn('Q4_UPV',F.when((F.col('Q4_VISITS').isNull()) | (F.col('Q4_VISITS') == 0), 0)\
+                                 .otherwise(F.col('Q4_UNITS') /F.col('Q4_VISITS')))\
+               .withColumn('Q4_SPU',F.when((F.col('Q4_UNITS').isNull()) | (F.col('Q4_UNITS') == 0), 0)\
+                                 .otherwise(F.col('Q4_SPEND') /F.col('Q4_UNITS')))\
+               .withColumn('PCT_Q4_SPEND',F.col('Q4_SPEND') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Q4_VISITS',F.col('Q4_VISITS') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Q4_UNITS',F.col('Q4_UNITS') * 100 /F.col('Total_Units'))\
                .drop('Total_Spend', 'Total_Visits', 'Total_Units', 'app_year_qtr')
 
 
@@ -1286,18 +1286,18 @@ qtr4_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_qtr4_a
 
 # DBTITLE 1,Weekly Spend
 weekly_df = full_flag_df.groupBy('household_id', 'week_of_month')\
-                                .agg(sum('net_spend_amt').alias('Spend'), \
-                                countDistinct('unique_transaction_uid').alias('Visits'), \
-                                sum('unit').alias('Units'))\
+                                .agg(F.sum('net_spend_amt').alias('Spend'), \
+                               F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                                F.sum('unit').alias('Units'))\
                                 .fillna(0)
 
 weekly_df = weekly_df.groupBy('household_id').agg(
-        round(avg(coalesce(F.col("Spend"), lit(0))), 2).alias("AVG_SPEND_WK"),
-        round(stddev(coalesce(F.col("Spend"), lit(0))), 2).alias("SD_SPEND_WK"),
-        round(avg(coalesce(F.col("Visits"), lit(0))), 2).alias("AVG_VISITS_WK"),
-        round(stddev(coalesce(F.col("Visits"), lit(0))), 2).alias("SD_VISITS_WK"),
-        round(avg(coalesce(F.col("Units"), lit(0))), 2).alias("AVG_UNITS_WK"),
-        round(stddev(coalesce(F.col("Units"), lit(0))), 2).alias("SD_UNITS_WK")
+        round(F.avg(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("AVG_SPEND_WK"),
+        round(F.stddev(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("SD_SPEND_WK"),
+        round(F.avg(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("AVG_VISITS_WK"),
+        round(F.stddev(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("SD_VISITS_WK"),
+        round(F.avg(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("AVG_UNITS_WK"),
+        round(F.stddev(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("SD_UNITS_WK")
     ).fillna(0)
               
 
@@ -1313,21 +1313,21 @@ weekly_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_week
 
 # DBTITLE 1,Festival Spend
 fest_df = full_flag_df.groupBy('household_id','fest_flag')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                                                
 fest_df = fest_df.join(total_df, on='household_id', how='inner')
 
-fest_df = fest_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+fest_df = fest_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
 # fest_df.display()
 
@@ -1367,11 +1367,11 @@ pivoted_fest_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_yea
 # DBTITLE 1,Count Distinct
 count_df = full_flag_df.groupBy('household_id')\
                                 .agg(countDistinct('department_id').alias('N_DISTINCT_DEP'),\
-                                     countDistinct('division_id').alias('N_DISTINCT_DIV'),\
-                                     countDistinct('section_code').alias('N_DISTINCT_SEC'),\
-                                     countDistinct('class_code').alias('N_DISTINCT_CLASS'),\
-                                     countDistinct('subclass_code').alias('N_DISTINCT_SUBCLASS'),\
-                                     countDistinct('store_id').alias('N_STORES'))\
+                                    F.count_distinct('division_id').alias('N_DISTINCT_DIV'),\
+                                    F.count_distinct('section_code').alias('N_DISTINCT_SEC'),\
+                                    F.count_distinct('class_code').alias('N_DISTINCT_CLASS'),\
+                                    F.count_distinct('subclass_code').alias('N_DISTINCT_SUBCLASS'),\
+                                    F.count_distinct('store_id').alias('N_STORES'))\
                                 .fillna(0)
 
 # count_df.display()
@@ -1386,27 +1386,27 @@ count_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_count
 # DBTITLE 1,Store Region (PCT_SA_BKK_UNITS)
 # region_list = ['Unidentified', 'South', 'Central', 'BKK & Vicinities', 'North', 'Northeast']
 
-store_region_df = full_flag_df.groupBy('household_id','region')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+store_region_df = full_flag_df.groupBy('household_id','store_region')\
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                                                
 store_region_df = store_region_df.join(total_df, on='household_id', how='inner')
 
-store_region_df = store_region_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+store_region_df = store_region_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
 # store_region_df.display()
 
-pivot_columns = store_region_df.select("region").distinct().rdd.flatMap(lambda x: x).collect()
-pivoted_store_region_df = store_region_df.groupBy("household_id").pivot("region", pivot_columns).agg(
+pivot_columns = store_region_df.select("store_region").distinct().rdd.flatMap(lambda x: x).collect()
+pivoted_store_region_df = store_region_df.groupBy("household_id").pivot("store_region", pivot_columns).agg(
     first("Spend").alias("Spend"),
     first("Visits").alias("Visits"),
     first("Units").alias("Units"),
@@ -1441,24 +1441,24 @@ pivoted_store_region_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkra
 
 # DBTITLE 1,Time of Day
 time_day_df = full_flag_df.groupBy('household_id','time_of_day')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                                                
 time_day_df = time_day_df.join(total_df, on='household_id', how='inner')
 
-time_day_df = time_day_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))\
-               .withColumn('PCT_PCT_Spend', col('PCT_Spend') / col('Total_Spend'))\
-               .withColumn('PCT_PCT_Visits', col('PCT_Visits') / col('Total_Visits'))\
-               .withColumn('PCT_PCT_Units', col('PCT_Units') / col('Total_Units'))
+time_day_df = time_day_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))\
+               .withColumn('PCT_PCT_Spend',F.col('PCT_Spend') /F.col('Total_Spend'))\
+               .withColumn('PCT_PCT_Visits',F.col('PCT_Visits') /F.col('Total_Visits'))\
+               .withColumn('PCT_PCT_Units',F.col('PCT_Units') /F.col('Total_Units'))
                
 
 # time_day_df.display()
@@ -1499,21 +1499,21 @@ pivoted_time_day_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th
 
 # DBTITLE 1,Store Format
 store_format_df = full_flag_df.groupBy('household_id','format_name')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                                                
 store_format_df = store_format_df.join(total_df, on='household_id', how='inner')
 
-store_format_df = store_format_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+store_format_df = store_format_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
 # store_format_df.display()
 
@@ -1552,24 +1552,24 @@ pivoted_store_format_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkra
 
 # DBTITLE 1,Premium / Budget Spend
 price_level_df = full_flag_df.groupBy('household_id','price_level')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                                                
 price_level_df = price_level_df.join(total_df, on='household_id', how='inner')
 
-price_level_df = price_level_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))\
-               .withColumn('PCT_PCT_Spend', col('Spend') / col('Total_Spend'))\
-               .withColumn('PCT_PCT_Visits', col('Visits') / col('Total_Visits'))\
-               .withColumn('PCT_PCT_Units', col('Units') / col('Total_Units'))
+price_level_df = price_level_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))\
+               .withColumn('PCT_PCT_Spend',F.col('Spend') /F.col('Total_Spend'))\
+               .withColumn('PCT_PCT_Visits',F.col('Visits') /F.col('Total_Visits'))\
+               .withColumn('PCT_PCT_Units',F.col('Units') /F.col('Total_Units'))
                
 
 # price_level_df.display()
@@ -1610,24 +1610,24 @@ pivoted_price_level_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai
 # DBTITLE 1,Last Weekend Spend
 last_wknd_df = full_flag_df.filter(F.col('last_weekend_flag') == 'Y')\
                        .groupBy('household_id')\
-                       .agg(sum('net_spend_amt').alias('LAST_WKND_SPEND'), \
-                        countDistinct('unique_transaction_uid').alias('LAST_WKND_VISITS'), \
-                        sum('unit').alias('LAST_WKND_UNITS'))
+                       .agg(F.sum('net_spend_amt').alias('LAST_WKND_SPEND'), \
+                       F.count_distinct('unique_transaction_uid').alias('LAST_WKND_VISITS'), \
+                        F.sum('unit').alias('LAST_WKND_UNITS'))
                                                
 last_wknd_df = last_wknd_df.join(total_df, on='household_id', how='inner')
 
-last_wknd_df = last_wknd_df.withColumn('LAST_WKND_SPV', when((F.col('LAST_WKND_VISITS').isNull()) | (F.col('LAST_WKND_VISITS') == 0), 0)\
-                                 .otherwise(F.col('LAST_WKND_SPEND') / col('LAST_WKND_VISITS')))\
-               .withColumn('LAST_WKND_UPV', when((F.col('LAST_WKND_VISITS').isNull()) | (F.col('LAST_WKND_VISITS') == 0), 0)\
-                                 .otherwise(F.col('LAST_WKND_UNITS') / col('LAST_WKND_VISITS')))\
-               .withColumn('LAST_WKND_SPU', when((F.col('LAST_WKND_UNITS').isNull()) | (F.col('LAST_WKND_UNITS') == 0), 0)\
-                                 .otherwise(F.col('LAST_WKND_SPEND') / col('LAST_WKND_UNITS')))\
-               .withColumn('PCT_LAST_WKND_SPEND', col('LAST_WKND_SPEND') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_LAST_WKND_VISITS', col('LAST_WKND_VISITS') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_LAST_WKND_UNITS', col('LAST_WKND_UNITS') * 100 / col('Total_Units'))\
-               .withColumn('PCT_PCT_LAST_WKND_SPEND', col('LAST_WKND_SPEND')  / col('Total_Spend'))\
-               .withColumn('PCT_PCT_LAST_WKND_VISITS', col('LAST_WKND_VISITS')  / col('Total_Visits'))\
-               .withColumn('PCT_PCT_LAST_WKND_UNITS', col('LAST_WKND_UNITS')  / col('Total_Units'))\
+last_wknd_df = last_wknd_df.withColumn('LAST_WKND_SPV',F.when((F.col('LAST_WKND_VISITS').isNull()) | (F.col('LAST_WKND_VISITS') == 0), 0)\
+                                 .otherwise(F.col('LAST_WKND_SPEND') /F.col('LAST_WKND_VISITS')))\
+               .withColumn('LAST_WKND_UPV',F.when((F.col('LAST_WKND_VISITS').isNull()) | (F.col('LAST_WKND_VISITS') == 0), 0)\
+                                 .otherwise(F.col('LAST_WKND_UNITS') /F.col('LAST_WKND_VISITS')))\
+               .withColumn('LAST_WKND_SPU',F.when((F.col('LAST_WKND_UNITS').isNull()) | (F.col('LAST_WKND_UNITS') == 0), 0)\
+                                 .otherwise(F.col('LAST_WKND_SPEND') /F.col('LAST_WKND_UNITS')))\
+               .withColumn('PCT_LAST_WKND_SPEND',F.col('LAST_WKND_SPEND') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_LAST_WKND_VISITS',F.col('LAST_WKND_VISITS') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_LAST_WKND_UNITS',F.col('LAST_WKND_UNITS') * 100 /F.col('Total_Units'))\
+               .withColumn('PCT_PCT_LAST_WKND_SPEND',F.col('LAST_WKND_SPEND')  /F.col('Total_Spend'))\
+               .withColumn('PCT_PCT_LAST_WKND_VISITS',F.col('LAST_WKND_VISITS')  /F.col('Total_Visits'))\
+               .withColumn('PCT_PCT_LAST_WKND_UNITS',F.col('LAST_WKND_UNITS')  /F.col('Total_Units'))\
                .fillna(0)\
                .drop('Total_Spend', 'Total_Visits', 'Total_Units')
 
@@ -1644,21 +1644,21 @@ last_wknd_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_l
 # DBTITLE 1,Weekend_Y_Spend
 wknd_df = full_flag_df.filter(F.col('weekend_flag') == 'Y')\
                        .groupBy('household_id')\
-                       .agg(sum('net_spend_amt').alias('WKND_FLAG_Y_SPEND'), \
-                        countDistinct('unique_transaction_uid').alias('WKND_FLAG_Y_VISITS'), \
-                        sum('unit').alias('WKND_FLAG_Y_UNITS'))
+                       .agg(F.sum('net_spend_amt').alias('WKND_FLAG_Y_SPEND'), \
+                       F.count_distinct('unique_transaction_uid').alias('WKND_FLAG_Y_VISITS'), \
+                        F.sum('unit').alias('WKND_FLAG_Y_UNITS'))
                                                
 wknd_df = wknd_df.join(total_df, on='household_id', how='inner')
 
-wknd_df = wknd_df.withColumn('WKND_FLAG_Y_SPV', when((F.col('WKND_FLAG_Y_VISITS').isNull()) | (F.col('WKND_FLAG_Y_VISITS') == 0), 0)\
-                                 .otherwise(F.col('WKND_FLAG_Y_SPEND') / col('WKND_FLAG_Y_VISITS')))\
-               .withColumn('WKND_FLAG_Y_UPV', when((F.col('WKND_FLAG_Y_VISITS').isNull()) | (F.col('WKND_FLAG_Y_VISITS') == 0), 0)\
-                                 .otherwise(F.col('WKND_FLAG_Y_UNITS') / col('WKND_FLAG_Y_VISITS')))\
-               .withColumn('WKND_FLAG_Y_SPU', when((F.col('WKND_FLAG_Y_UNITS').isNull()) | (F.col('WKND_FLAG_Y_UNITS') == 0), 0)\
-                                 .otherwise(F.col('WKND_FLAG_Y_SPEND') / col('WKND_FLAG_Y_UNITS')))\
-               .withColumn('PCT_WKND_FLAG_Y_SPEND', col('WKND_FLAG_Y_SPEND') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_WKND_FLAG_Y_VISITS', col('WKND_FLAG_Y_VISITS') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_WKND_FLAG_Y_UNITS', col('WKND_FLAG_Y_UNITS') * 100 / col('Total_Units'))\
+wknd_df = wknd_df.withColumn('WKND_FLAG_Y_SPV',F.when((F.col('WKND_FLAG_Y_VISITS').isNull()) | (F.col('WKND_FLAG_Y_VISITS') == 0), 0)\
+                                 .otherwise(F.col('WKND_FLAG_Y_SPEND') /F.col('WKND_FLAG_Y_VISITS')))\
+               .withColumn('WKND_FLAG_Y_UPV',F.when((F.col('WKND_FLAG_Y_VISITS').isNull()) | (F.col('WKND_FLAG_Y_VISITS') == 0), 0)\
+                                 .otherwise(F.col('WKND_FLAG_Y_UNITS') /F.col('WKND_FLAG_Y_VISITS')))\
+               .withColumn('WKND_FLAG_Y_SPU',F.when((F.col('WKND_FLAG_Y_UNITS').isNull()) | (F.col('WKND_FLAG_Y_UNITS') == 0), 0)\
+                                 .otherwise(F.col('WKND_FLAG_Y_SPEND') /F.col('WKND_FLAG_Y_UNITS')))\
+               .withColumn('PCT_WKND_FLAG_Y_SPEND',F.col('WKND_FLAG_Y_SPEND') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_WKND_FLAG_Y_VISITS',F.col('WKND_FLAG_Y_VISITS') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_WKND_FLAG_Y_UNITS',F.col('WKND_FLAG_Y_UNITS') * 100 /F.col('Total_Units'))\
                .fillna(0)\
                .drop('Total_Spend', 'Total_Visits', 'Total_Units')
 
@@ -1674,21 +1674,21 @@ wknd_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_wknd_a
 # DBTITLE 1,Weekend_N_Spend
 wkday_df = full_flag_df.filter(F.col('weekend_flag') == 'N')\
                        .groupBy('household_id')\
-                       .agg(sum('net_spend_amt').alias('WKND_FLAG_N_SPEND'), \
-                        countDistinct('unique_transaction_uid').alias('WKND_FLAG_N_VISITS'), \
-                        sum('unit').alias('WKND_FLAG_N_UNITS'))
+                       .agg(F.sum('net_spend_amt').alias('WKND_FLAG_N_SPEND'), \
+                       F.count_distinct('unique_transaction_uid').alias('WKND_FLAG_N_VISITS'), \
+                        F.sum('unit').alias('WKND_FLAG_N_UNITS'))
                                                
 wkday_df = wkday_df.join(total_df, on='household_id', how='inner')
 
-wkday_df = wkday_df.withColumn('WKND_FLAG_N_SPV', when((F.col('WKND_FLAG_N_VISITS').isNull()) | (F.col('WKND_FLAG_N_VISITS') == 0), 0)\
-                                 .otherwise(F.col('WKND_FLAG_N_SPEND') / col('WKND_FLAG_N_VISITS')))\
-               .withColumn('WKND_FLAG_N_UPV', when((F.col('WKND_FLAG_N_VISITS').isNull()) | (F.col('WKND_FLAG_N_VISITS') == 0), 0)\
-                                 .otherwise(F.col('WKND_FLAG_N_UNITS') / col('WKND_FLAG_N_VISITS')))\
-               .withColumn('WKND_FLAG_N_SPU', when((F.col('WKND_FLAG_N_UNITS').isNull()) | (F.col('WKND_FLAG_N_UNITS') == 0), 0)\
-                                 .otherwise(F.col('WKND_FLAG_N_SPEND') / col('WKND_FLAG_N_UNITS')))\
-               .withColumn('PCT_WKND_FLAG_N_SPEND', col('WKND_FLAG_N_SPEND') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_WKND_FLAG_N_VISITS', col('WKND_FLAG_N_VISITS') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_WKND_FLAG_N_UNITS', col('WKND_FLAG_N_UNITS') * 100 / col('Total_Units'))\
+wkday_df = wkday_df.withColumn('WKND_FLAG_N_SPV',F.when((F.col('WKND_FLAG_N_VISITS').isNull()) | (F.col('WKND_FLAG_N_VISITS') == 0), 0)\
+                                 .otherwise(F.col('WKND_FLAG_N_SPEND') /F.col('WKND_FLAG_N_VISITS')))\
+               .withColumn('WKND_FLAG_N_UPV',F.when((F.col('WKND_FLAG_N_VISITS').isNull()) | (F.col('WKND_FLAG_N_VISITS') == 0), 0)\
+                                 .otherwise(F.col('WKND_FLAG_N_UNITS') /F.col('WKND_FLAG_N_VISITS')))\
+               .withColumn('WKND_FLAG_N_SPU',F.when((F.col('WKND_FLAG_N_UNITS').isNull()) | (F.col('WKND_FLAG_N_UNITS') == 0), 0)\
+                                 .otherwise(F.col('WKND_FLAG_N_SPEND') /F.col('WKND_FLAG_N_UNITS')))\
+               .withColumn('PCT_WKND_FLAG_N_SPEND',F.col('WKND_FLAG_N_SPEND') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_WKND_FLAG_N_VISITS',F.col('WKND_FLAG_N_VISITS') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_WKND_FLAG_N_UNITS',F.col('WKND_FLAG_N_UNITS') * 100 /F.col('Total_Units'))\
                .fillna(0)\
                .drop('Total_Spend', 'Total_Visits', 'Total_Units')
 
@@ -1704,21 +1704,21 @@ wkday_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_wkday
 # DBTITLE 1,Recency
 l3_df = full_flag_df.filter(F.col('last_3_flag') == 'Y')\
                        .groupBy('household_id')\
-                       .agg(sum('net_spend_amt').alias('L3_SPEND'), \
-                        countDistinct('unique_transaction_uid').alias('L3_VISITS'), \
-                        sum('unit').alias('L3_UNITS'))
+                       .agg(F.sum('net_spend_amt').alias('L3_SPEND'), \
+                       F.count_distinct('unique_transaction_uid').alias('L3_VISITS'), \
+                        F.sum('unit').alias('L3_UNITS'))
                                                
 l3_df = l3_df.join(total_df, on='household_id', how='inner')
 
-l3_df = l3_df.withColumn('L3_SPV', when((F.col('L3_VISITS').isNull()) | (F.col('L3_VISITS') == 0), 0)\
-                                 .otherwise(F.col('L3_SPEND') / col('L3_VISITS')))\
-               .withColumn('L3_UPV', when((F.col('L3_VISITS').isNull()) | (F.col('L3_VISITS') == 0), 0)\
-                                 .otherwise(F.col('L3_UNITS') / col('L3_VISITS')))\
-               .withColumn('L3_SPU', when((F.col('L3_UNITS').isNull()) | (F.col('L3_UNITS') == 0), 0)\
-                                 .otherwise(F.col('L3_SPEND') / col('L3_UNITS')))\
-               .withColumn('PCT_L3_SPEND', col('L3_SPEND') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_L3_VISITS', col('L3_VISITS') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_L3_UNITS', col('L3_UNITS') * 100 / col('Total_Units'))\
+l3_df = l3_df.withColumn('L3_SPV',F.when((F.col('L3_VISITS').isNull()) | (F.col('L3_VISITS') == 0), 0)\
+                                 .otherwise(F.col('L3_SPEND') /F.col('L3_VISITS')))\
+               .withColumn('L3_UPV',F.when((F.col('L3_VISITS').isNull()) | (F.col('L3_VISITS') == 0), 0)\
+                                 .otherwise(F.col('L3_UNITS') /F.col('L3_VISITS')))\
+               .withColumn('L3_SPU',F.when((F.col('L3_UNITS').isNull()) | (F.col('L3_UNITS') == 0), 0)\
+                                 .otherwise(F.col('L3_SPEND') /F.col('L3_UNITS')))\
+               .withColumn('PCT_L3_SPEND',F.col('L3_SPEND') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_L3_VISITS',F.col('L3_VISITS') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_L3_UNITS',F.col('L3_UNITS') * 100 /F.col('Total_Units'))\
                .drop('Total_Spend', 'Total_Visits', 'Total_Units', 'app_year_qtr')
 
 # -------------------------------------------------------------------------------------------------------------
@@ -1726,42 +1726,42 @@ l3_df = l3_df.withColumn('L3_SPV', when((F.col('L3_VISITS').isNull()) | (F.col('
 
 l6_df = full_flag_df.filter(F.col('last_6_flag') == 'Y')\
                        .groupBy('household_id')\
-                       .agg(sum('net_spend_amt').alias('L6_SPEND'), \
-                        countDistinct('unique_transaction_uid').alias('L6_VISITS'), \
-                        sum('unit').alias('L6_UNITS'))
+                       .agg(F.sum('net_spend_amt').alias('L6_SPEND'), \
+                       F.count_distinct('unique_transaction_uid').alias('L6_VISITS'), \
+                        F.sum('unit').alias('L6_UNITS'))
                                                
 l6_df = l6_df.join(total_df, on='household_id', how='inner')
 
-l6_df = l6_df.withColumn('L6_SPV', when((F.col('L6_VISITS').isNull()) | (F.col('L6_VISITS') == 0), 0)\
-                                 .otherwise(F.col('L6_SPEND') / col('L6_VISITS')))\
-               .withColumn('L6_UPV', when((F.col('L6_VISITS').isNull()) | (F.col('L6_VISITS') == 0), 0)\
-                                 .otherwise(F.col('L6_UNITS') / col('L6_VISITS')))\
-               .withColumn('L6_SPU', when((F.col('L6_UNITS').isNull()) | (F.col('L6_UNITS') == 0), 0)\
-                                 .otherwise(F.col('L6_SPEND') / col('L6_UNITS')))\
-               .withColumn('PCT_L6_SPEND', col('L6_SPEND') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_L6_VISITS', col('L6_VISITS') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_L6_UNITS', col('L6_UNITS') * 100 / col('Total_Units'))\
+l6_df = l6_df.withColumn('L6_SPV',F.when((F.col('L6_VISITS').isNull()) | (F.col('L6_VISITS') == 0), 0)\
+                                 .otherwise(F.col('L6_SPEND') /F.col('L6_VISITS')))\
+               .withColumn('L6_UPV',F.when((F.col('L6_VISITS').isNull()) | (F.col('L6_VISITS') == 0), 0)\
+                                 .otherwise(F.col('L6_UNITS') /F.col('L6_VISITS')))\
+               .withColumn('L6_SPU',F.when((F.col('L6_UNITS').isNull()) | (F.col('L6_UNITS') == 0), 0)\
+                                 .otherwise(F.col('L6_SPEND') /F.col('L6_UNITS')))\
+               .withColumn('PCT_L6_SPEND',F.col('L6_SPEND') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_L6_VISITS',F.col('L6_VISITS') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_L6_UNITS',F.col('L6_UNITS') * 100 /F.col('Total_Units'))\
                .drop('Total_Spend', 'Total_Visits', 'Total_Units', 'app_year_qtr')
 
 # -------------------------------------------------------------------------------------------------------------
 
 l9_df = full_flag_df.filter(F.col('last_9_flag') == 'Y')\
                        .groupBy('household_id')\
-                       .agg(sum('net_spend_amt').alias('L9_SPEND'), \
-                        countDistinct('unique_transaction_uid').alias('L9_VISITS'), \
-                        sum('unit').alias('L9_UNITS'))
+                       .agg(F.sum('net_spend_amt').alias('L9_SPEND'), \
+                       F.count_distinct('unique_transaction_uid').alias('L9_VISITS'), \
+                        F.sum('unit').alias('L9_UNITS'))
                                                
 l9_df = l9_df.join(total_df, on='household_id', how='inner')
 
-l9_df = l9_df.withColumn('L9_SPV', when((F.col('L9_VISITS').isNull()) | (F.col('L9_VISITS') == 0), 0)\
-                                 .otherwise(F.col('L9_SPEND') / col('L9_VISITS')))\
-               .withColumn('L9_UPV', when((F.col('L9_VISITS').isNull()) | (F.col('L9_VISITS') == 0), 0)\
-                                 .otherwise(F.col('L9_UNITS') / col('L9_VISITS')))\
-               .withColumn('L9_SPU', when((F.col('L9_UNITS').isNull()) | (F.col('L9_UNITS') == 0), 0)\
-                                 .otherwise(F.col('L9_SPEND') / col('L9_UNITS')))\
-               .withColumn('PCT_L9_SPEND', col('L9_SPEND') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_L9_VISITS', col('L9_VISITS') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_L9_UNITS', col('L9_UNITS') * 100 / col('Total_Units'))\
+l9_df = l9_df.withColumn('L9_SPV',F.when((F.col('L9_VISITS').isNull()) | (F.col('L9_VISITS') == 0), 0)\
+                                 .otherwise(F.col('L9_SPEND') /F.col('L9_VISITS')))\
+               .withColumn('L9_UPV',F.when((F.col('L9_VISITS').isNull()) | (F.col('L9_VISITS') == 0), 0)\
+                                 .otherwise(F.col('L9_UNITS') /F.col('L9_VISITS')))\
+               .withColumn('L9_SPU',F.when((F.col('L9_UNITS').isNull()) | (F.col('L9_UNITS') == 0), 0)\
+                                 .otherwise(F.col('L9_SPEND') /F.col('L9_UNITS')))\
+               .withColumn('PCT_L9_SPEND',F.col('L9_SPEND') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_L9_VISITS',F.col('L9_VISITS') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_L9_UNITS',F.col('L9_UNITS') * 100 /F.col('Total_Units'))\
                .drop('Total_Spend', 'Total_Visits', 'Total_Units', 'app_year_qtr')
 
 # COMMAND ----------
@@ -1777,21 +1777,21 @@ l9_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_l9_agg_d
 # payment_list = ['CASH', 'CARD', 'COUPON', 'VOUCHER']
 
 payment_df = full_flag_df.groupBy('household_id','payment_flag')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                                                
 payment_df = payment_df.join(total_df, on='household_id', how='inner')
 
-payment_df = payment_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+payment_df = payment_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
 
 pivot_columns = payment_df.select("payment_flag").distinct().rdd.flatMap(lambda x: x).collect()
@@ -1842,21 +1842,21 @@ pivoted_payment_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_
 
 # DBTITLE 1,Promo General
 discount_promo_df = full_flag_df.groupBy('household_id','promo_flag')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                                                
 discount_promo_df = discount_promo_df.join(total_df, on='household_id', how='inner')
 
-discount_promo_df = discount_promo_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+discount_promo_df = discount_promo_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
 
 pivot_columns = discount_promo_df.select("promo_flag").distinct().rdd.flatMap(lambda x: x).collect()
@@ -1903,21 +1903,21 @@ pivoted_discount_promo_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatk
 #LAST 3
 l3_promo_df = full_flag_df.filter(F.col('last_3_flag') == 'Y')\
                        .groupBy('household_id','promo_flag')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                        
 l3_promo_df = l3_promo_df.join(total_df, on='household_id', how='inner')
 
-l3_promo_df = l3_promo_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+l3_promo_df = l3_promo_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
 
 pivot_columns = l3_promo_df.select("promo_flag").distinct().rdd.flatMap(lambda x: x).collect()
@@ -1949,21 +1949,21 @@ for c in pivot_columns:
 
 l6_promo_df = full_flag_df.filter(F.col('last_6_flag') == 'Y')\
                        .groupBy('household_id','promo_flag')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                        
 l6_promo_df = l6_promo_df.join(total_df, on='household_id', how='inner')
 
-l6_promo_df = l6_promo_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+l6_promo_df = l6_promo_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
 # dep_df.display()
 
@@ -1996,21 +1996,21 @@ for c in pivot_columns:
 
 l9_promo_df = full_flag_df.filter(F.col('last_9_flag') == 'Y')\
                        .groupBy('household_id','promo_flag')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                        
 l9_promo_df = l9_promo_df.join(total_df, on='household_id', how='inner')
 
-l9_promo_df = l9_promo_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+l9_promo_df = l9_promo_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
 # dep_df.display()
 
@@ -2050,22 +2050,22 @@ pivoted_l9_promo_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th
 
 # DBTITLE 1,Promo Time of Day
 time_promo_df = full_flag_df.groupBy('household_id','time_of_day','promo_flag')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                                                
 time_promo_df = time_promo_df.join(total_df, on='household_id', how='inner')
 
-time_promo_df = time_promo_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))\
-               .withColumn('time_promo', concat_ws('_', col('time_of_day'), col('promo_flag')))
+time_promo_df = time_promo_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))\
+               .withColumn('time_promo',F.concat_ws('_',F.col('time_of_day'),F.col('promo_flag')))
 
 # time_promo_df.display()
 
@@ -2105,7 +2105,7 @@ pivoted_time_promo_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_
 # L3
 l3_promo_item_df = full_flag_df.filter(F.col('last_3_flag') == 'Y')\
                        .groupBy('household_id', 'promo_flag')\
-                       .agg(sum('unit').alias('Items'))
+                       .agg(F.sum('unit').alias('Items'))
 
 pivot_columns = l3_promo_item_df.select("promo_flag").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_l3_promo_item_df = l3_promo_item_df.groupBy("household_id").pivot("promo_flag", pivot_columns).agg(
@@ -2122,7 +2122,7 @@ for c in pivot_columns:
 
 l6_promo_item_df = full_flag_df.filter(F.col('last_6_flag') == 'Y')\
                        .groupBy('household_id', 'promo_flag')\
-                       .agg(sum('unit').alias('Items'))
+                       .agg(F.sum('unit').alias('Items'))
 
 pivot_columns = l6_promo_item_df.select("promo_flag").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_l6_promo_item_df = l6_promo_item_df.groupBy("household_id").pivot("promo_flag", pivot_columns).agg(
@@ -2137,7 +2137,7 @@ for c in pivot_columns:
 
 l9_promo_item_df = full_flag_df.filter(F.col('last_9_flag') == 'Y')\
                        .groupBy('household_id', 'promo_flag')\
-                       .agg(sum('unit').alias('Items'))
+                       .agg(F.sum('unit').alias('Items'))
 
 pivot_columns = l9_promo_item_df.select("promo_flag").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_l9_promo_item_df = l9_promo_item_df.groupBy("household_id").pivot("promo_flag", pivot_columns).agg(
@@ -2159,21 +2159,21 @@ pivoted_l9_promo_item_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkr
 # DBTITLE 1,Last Weekend Promo / Markdown
 last_weekend_promo_df = full_flag_df.filter(F.col('last_weekend_flag') == 'Y')\
                        .groupBy('household_id','promo_flag')\
-                       .agg(sum('net_spend_amt').alias('Spend'), \
-                        countDistinct('unique_transaction_uid').alias('Visits'), \
-                        sum('unit').alias('Units'))
+                       .agg(F.sum('net_spend_amt').alias('Spend'), \
+                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.sum('unit').alias('Units'))
                        
 last_weekend_promo_df = last_weekend_promo_df.join(total_df, on='household_id', how='inner')
 
-last_weekend_promo_df = last_weekend_promo_df.withColumn('SPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Visits')))\
-               .withColumn('UPV', when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
-                                 .otherwise(F.col('Units') / col('Visits')))\
-               .withColumn('SPU', when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
-                                 .otherwise(F.col('Spend') / col('Units')))\
-               .withColumn('PCT_Spend', col('Spend') * 100 / col('Total_Spend'))\
-               .withColumn('PCT_Visits', col('Visits') * 100 / col('Total_Visits'))\
-               .withColumn('PCT_Units', col('Units') * 100 / col('Total_Units'))
+last_weekend_promo_df = last_weekend_promo_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Visits')))\
+               .withColumn('UPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
+                                 .otherwise(F.col('Units') /F.col('Visits')))\
+               .withColumn('SPU',F.when((F.col('Units').isNull()) | (F.col('Units') == 0), 0)\
+                                 .otherwise(F.col('Spend') /F.col('Units')))\
+               .withColumn('PCT_Spend',F.col('Spend') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
 
 pivot_columns = last_weekend_promo_df.select("promo_flag").distinct().rdd.flatMap(lambda x: x).collect()
@@ -2317,31 +2317,31 @@ more_agg_df = total_df.join(pivoted_div_df, on='household_id', how='left')\
                        .join(cc_tenure_df, on='household_id', how='left')
 
 
-more_agg_df = more_agg_df.withColumn('THICK_FLAG', when((F.col('Total_Spend')>2000) & (F.col('Total_Visits')>=8) & (F.col('Total_Units')>=100)\
+more_agg_df = more_agg_df.withColumn('THICK_FLAG',F.when((F.col('Total_Spend')>2000) & (F.col('Total_Visits')>=8) & (F.col('Total_Units')>=100)\
                                                 & (F.col('Q1_Spend')>0) & (F.col('Q2_Spend')>0) & (F.col('Q3_Spend')>0) & (F.col('Q4_Spend')>0), 1)\
                                          .otherwise(0))\
-               .withColumn('AFFLUENCE_UM', when(F.col('truprice_seg_desc').isin('Most Price Insensitive', 'Price Insensitive'), lit(1))\
+               .withColumn('AFFLUENCE_UM',F.when(F.col('truprice_seg_desc').isin('Most Price Insensitive', 'Price Insensitive'),F.lit(1))\
                                           .otherwise(lit(0)))\
-               .withColumn('AFFLUENCE_LA', lit(0))\
+               .withColumn('AFFLUENCE_LA',F.lit(0))\
                .drop('truprice_seg_desc')
                
-full_agg_df = more_agg_df.withColumn('PCT_MIS_BIG_TICKET_UNITS', lit(0))\
-               .withColumn('PCT_MIS_FOR_LATER_SPEND', lit(0))\
-               .withColumn('PCT_MIS_FRESH_SPEND', lit(0))\
-               .withColumn('PCT_MIS_FOR_LATER_UNITS', lit(0))\
-               .withColumn('PCT_MIS_FOR_LATER_VISITS', lit(0))\
-               .withColumn('PCT_MIS_MIXED_VISITS', lit(0))\
-               .withColumn('PCT_MIS_ALC_TOB_VISITS', lit(0))\
-               .withColumn('PCT_MIS_HOME_REFRESH_VISITS', lit(0))\
-               .withColumn('PCT_CAT_L21_0204230_UNITS', lit(0))\
-               .withColumn('PCT_CAT_L21_0204230_SPEND', lit(0))\
-               .withColumn('PCT_CAT_L21_0204230_VISITS', lit(0))\
+full_agg_df = more_agg_df.withColumn('PCT_MIS_BIG_TICKET_UNITS',F.lit(0))\
+               .withColumn('PCT_MIS_FOR_LATER_SPEND',F.lit(0))\
+               .withColumn('PCT_MIS_FRESH_SPEND',F.lit(0))\
+               .withColumn('PCT_MIS_FOR_LATER_UNITS',F.lit(0))\
+               .withColumn('PCT_MIS_FOR_LATER_VISITS',F.lit(0))\
+               .withColumn('PCT_MIS_MIXED_VISITS',F.lit(0))\
+               .withColumn('PCT_MIS_ALC_TOB_VISITS',F.lit(0))\
+               .withColumn('PCT_MIS_HOME_REFRESH_VISITS',F.lit(0))\
+               .withColumn('PCT_CAT_L21_0204230_UNITS',F.lit(0))\
+               .withColumn('PCT_CAT_L21_0204230_SPEND',F.lit(0))\
+               .withColumn('PCT_CAT_L21_0204230_VISITS',F.lit(0))\
                .withColumnRenamed('Total_Spend', 'SPEND')\
                .withColumnRenamed('Total_Visits', 'VISITS')\
                .withColumnRenamed('Total_Units', 'UNITS')\
-               .withColumn('PCT_CAT_L21_0140071_SPEND', col('PCT_CAT_DEP_%1_40%_SPEND'))\
-               .withColumn('PCT_CAT_L21_0140071_VISITS', col('PCT_CAT_DEP_%1_40%_VISITS'))\
-               .withColumn('PCT_CAT_L21_0140071_UNITS', col('PCT_CAT_DEP_%1_40%_UNITS'))
+               .withColumn('PCT_CAT_L21_0140071_SPEND',F.col('PCT_CAT_DEP_%1_40%_SPEND'))\
+               .withColumn('PCT_CAT_L21_0140071_VISITS',F.col('PCT_CAT_DEP_%1_40%_VISITS'))\
+               .withColumn('PCT_CAT_L21_0140071_UNITS',F.col('PCT_CAT_DEP_%1_40%_UNITS'))
 
 # create 0140071 using 0140 values (FROZEN)
 
@@ -2362,7 +2362,7 @@ full_agg_df = spark.table("tdm_seg.kritawatkrai_th_year_full_agg_data")
 columns = [column for column in full_agg_df.columns if column != 'household_id']
 
 rounded_full_agg_df = full_agg_df.select(
-    col('household_id'),
+   F.col('household_id'),
     *[round(F.col(column).cast('double'), 2).alias(column) for column in columns]
 )
 

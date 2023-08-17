@@ -34,12 +34,23 @@ spark = SparkSession.builder.appName("lmp").getOrCreate()
 conf_mapper = files.conf_reader("../config/etl.json")
 country = conf_mapper["country"]
 print(f"Country : {country}")
+product_division = conf_mapper["product_division"]
+print(f"{product_division}")
+store_format = conf_mapper["store_format"]
+print(f"{store_format}")
+decision_date = conf_mapper["decision_date"]
+print(f"{decision_date}")
 
 # COMMAND ----------
 
 # DBTITLE 1,Decision date -> define start , end timeframe for txn
 # decision date = latest data end date
 decision_date =  datetime.strptime(conf_mapper["decision_date"], '%Y-%m-%d').date()
+
+#--- For Code testing 
+# decision_date =  datetime.strptime("2023-08-13", '%Y-%m-%d').date() + timedelta(days=365)
+#----
+
 timeframe_end = date(decision_date.year, decision_date.month - 1, 1) - timedelta(days=1)
 timeframe_start = (timeframe_end - relativedelta(months=11)).replace(day=1)
 
@@ -57,93 +68,245 @@ print(f"start_week : {start_week}, end_week : {end_week}")
 
 # COMMAND ----------
 
-# DBTITLE 1,Get Raw Data
-product_df = spark.table('tdm.v_prod_dim_c').select(['upc_id','brand_name','division_id','division_name','department_id','department_name','department_code','section_id','section_name','section_code','class_id','class_name','class_code','subclass_id','subclass_name','subclass_code'])\
-                                                 .filter(F.col('division_id').isin(product_division))\
-                                                 .filter(F.col('country') == country)
+# DBTITLE 1,Skip, use 118wk Get Raw Data
+product_df = (
+    spark.table("tdm.v_prod_dim_c")
+    .select(
+        [
+            "upc_id",
+            "brand_name",
+            "division_id",
+            "division_name",
+            "department_id",
+            "department_name",
+            "department_code",
+            "section_id",
+            "section_name",
+            "section_code",
+            "class_id",
+            "class_name",
+            "class_code",
+            "subclass_id",
+            "subclass_name",
+            "subclass_code",
+        ]
+    )
+    .filter(F.col("division_id").isin(product_division))
+    .filter(F.col("country") == country)
+)
 
-header_df = spark.table('tdm.v_transaction_head').select(['transaction_uid','store_id','date_id','channel'])\
-                                                      .filter(F.col('week_id').between(start_week, end_week))\
-                                                      .filter(F.col('date_id').between(timeframe_start, timeframe_end))\
-                                                      .filter(F.col('country') == country)\
-                                                      .dropDuplicates()
+header_df = (
+    spark.table("tdm.v_transaction_head")
+    .select(["transaction_uid", "store_id", "date_id", "channel"])
+    .filter(F.col("week_id").between(start_week, end_week))
+    .filter(F.col("date_id").between(timeframe_start, timeframe_end))
+    .filter(F.col("country") == country)
+)
 
-item_df = spark.table('tdm.v_transaction_item').select(['transaction_uid','store_id','date_id','week_id','tran_datetime','upc_id','customer_id','net_spend_amt','cc_flag','count_qty','product_qty','measured_qty','discount_amt','source'])\
-                                                    .filter(F.col('week_id').between(start_week, end_week))\
-                                                    .filter(F.col('date_id').between(timeframe_start,timeframe_end))\
-                                                    .filter(F.col('country') == country)\
-                                                    .where((F.col('net_spend_amt')>0)&(F.col('product_qty')>0)&(F.col('date_id').isNotNull()))\
-                                                    .filter(F.col('cc_flag') == 'cc')\
-                                                    .dropDuplicates()
+item_df = (
+    spark.table("tdm.v_transaction_item")
+    .select(
+        [
+            "transaction_uid",
+            "store_id",
+            "date_id",
+            "week_id",
+            "tran_datetime",
+            "upc_id",
+            "customer_id",
+            "net_spend_amt",
+            "cc_flag",
+            "count_qty",
+            "product_qty",
+            "measured_qty",
+            "discount_amt",
+            "source",
+        ]
+    )
+    .filter(F.col("week_id").between(start_week, end_week))
+    .filter(F.col("date_id").between(timeframe_start, timeframe_end))
+    .filter(F.col("country") == country)
+    .where(
+        (F.col("net_spend_amt") > 0)
+        & (F.col("product_qty") > 0)
+        & (F.col("date_id").isNotNull())
+    )
+    .filter(F.col("cc_flag") == "cc")
+)
 
-
-date_df = spark.table('tdm.v_date_dim').select(['date_id','period_id','quarter_id','year_id','month_id','weekday_nbr','day_in_month_nbr','day_in_year_nbr','day_num_sequence','week_num_sequence','promoweek_id','dp_data_dt'])\
-                                            .filter(F.col('week_id').between(start_week, end_week))\
-                                            .filter(F.col('date_id').between(timeframe_start,timeframe_end))\
-                                            .dropDuplicates()
-
-
-customer_df = spark.table('tdm.v_customer_dim').select(['customer_id','household_id','card_issue_date', 'golden_record_external_id_hash'])\
-                                                    .filter(F.col('country') == country)\
-                                                    .dropDuplicates(['customer_id'])
-
-store_df = spark.table('tdm.v_store_dim_c').select('store_id','format_id','region')\
-                                                .filter(F.col('format_id').isin(store_format))\
-                                                .filter(F.col('country') == country)\
-                                                .withColumn('format_name',F.when(F.col('format_id').isin([1,2,3]), 'Hypermarket')\
-                                                                             .when(F.col('format_id') == 4, 'Supermarket')\
-                                                                             .when(F.col('format_id') == 5, 'Mini Supermarket')\
-                                                                             .otherwise(F.col('format_id')))\
-                                                                             .dropDuplicates()
-
-data_df = item_df.join(header_df, on=['transaction_uid','store_id','date_id'], how='inner')\
-                 .join(product_df, on='upc_id', how='inner')\
-                 .join(store_df, on='store_id', how='inner')\
-                 .join(date_df, on='date_id', how='left')\
-                 .join(customer_df, on='customer_id', how='left')\
-                 .withColumn('unique_transaction_uid',F.concat_ws('_',F.col('transaction_uid'),F.col('store_id'),F.col('date_id')))\
-                 .withColumn('unit',F.when(F.col('count_qty').isNotNull(),F.col('product_qty'))\
-                 .otherwise(F.col('measured_qty')))
-
-data_df = data_df.withColumn('channel_group_forlotuss',F.when(F.col('channel')=='OFFLINE', 'OFFLINE')\
-                                      .when(F.col('channel').isin('Click and Collect','Scheduled CC'), 'Click & Collect')\
-                                      .when(F.col('channel').isin('HATO'), 'Line HATO')\
-                                      .when(F.col('channel').isin('GHS 1','GHS 2','GHS APP','Scheduled HD'), 'Scheduled HD')\
-                                      .when(F.col('channel').isin('HLE','Scheduled HLE'), 'Electronic Mall')\
-                                      .when((F.col('channel').isin('OnDemand HD'))&(F.col('format_name').isin('Hypermarket'))&(F.col('store_id')!=5185)
-                                                                  , 'OnDemand Hypermarket')\
-                                      .when((F.col('channel').isin('OnDemand HD'))&(F.col('format_name').isin('Supermarket','Mini Super')), 'OnDemand')\
-                                      .when(F.col('channel').isin('Light Delivery'), 'OnDemand')\
-                                      .when((F.col('channel').isin('OnDemand HD'))&(F.col('store_id')==5185)&(F.col('date_id')<='2023-04-06'), 'OnDemand')\
-                                      .when((F.col('channel').isin('OnDemand HD'))&(F.col('store_id')==5185)&(F.col('date_id')>='2023-04-07'), 'OnDemand Hypermarket')\
-                                      .when(F.col('channel').isin('Shopee','Lazada','O2O Lazada','O2O Shopee'), 'Marketplace')\
-                                      .when(F.col('channel').isin('Ant Delivery ','Food Panda','Grabmart'\
-                                                                ,'Happy Fresh','Robinhood','We Fresh','7 MARKET'), 'Aggregator')\
-                                      .when(F.col('channel').isin('TRUE SMART QR'), 'Others')\
-                                      .otherwise(lit('OFFLINE')))
-
-data_df = data_df.withColumn('format_name',F.when(F.col('channel_group_forlotuss').isin("Scheduled HD","Electronic Mall","OnDemand","OnDemand Hypermarket"
-                                                                                           ,"Click & Collect","Line HATO","Marketplace","Aggregator","Others")
-                                                       ,F.lit('ONLINE'))\
-                                                            .otherwise(F.col('format_name')))
-
-data_df = data_df.withColumn('channel_flag',F.when(F.col('format_name').isin('Hypermarket','Supermarket','Mini Super'),F.lit('OFFLINE')).otherwise(lit('ONLINE')))
-
-
-data_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_full_data_tmp")
-
+date_df = (
+    spark.table("tdm.v_date_dim")
+    .select(
+        [
+            "date_id",
+            "period_id",
+            "quarter_id",
+            "year_id",
+            "month_id",
+            "weekday_nbr",
+            "day_in_month_nbr",
+            "day_in_year_nbr",
+            "day_num_sequence",
+            "week_num_sequence",
+            "promoweek_id",
+            "dp_data_dt",
+        ]
+    )
+    .filter(F.col("week_id").between(start_week, end_week))
+    .filter(F.col("date_id").between(timeframe_start, timeframe_end))
+    .dropDuplicates()
+)
 
 # COMMAND ----------
 
-# DBTITLE 1,Load Back Data
+# DBTITLE 1,Skip, use 118wk Get Raw data
+customer_df = (
+    spark.table("tdm.v_customer_dim")
+    .select(
+        [
+            "customer_id",
+            "household_id",
+            "card_issue_date",
+            "golden_record_external_id_hash",
+        ]
+    )
+    .filter(F.col("country") == country)
+)
+
+# COMMAND ----------
+
+# DBTITLE 1,Skip, use 118wk Get Raw Data
+store_df = (
+    spark.table("tdm.v_store_dim_c")
+    .select("store_id", "format_id", "region")
+    .filter(F.col("format_id").isin(store_format))
+    .filter(F.col("country") == country)
+    .withColumn(
+        "format_name",
+        F.when(F.col("format_id").isin([1, 2, 3]), "Hypermarket")
+        .when(F.col("format_id") == 4, "Supermarket")
+        .when(F.col("format_id") == 5, "Mini Supermarket")
+        .otherwise(F.col("format_id")),
+    )
+)
+
+data_df = (
+    item_df.join(header_df, on=["transaction_uid", "store_id", "date_id"], how="inner")
+    .join(product_df, on="upc_id", how="inner")
+    .join(store_df, on="store_id", how="inner")
+    .join(date_df, on="date_id", how="left")
+    .join(customer_df, on="customer_id", how="left")
+    .withColumn(
+        "unique_transaction_uid",
+        F.concat_ws("_", F.col("transaction_uid"), F.col("store_id"), F.col("date_id")),
+    )
+    .withColumn(
+        "unit",
+        F.when(F.col("count_qty").isNotNull(), F.col("product_qty")).otherwise(
+            F.col("measured_qty")
+        ),
+    )
+)
+
+data_df = data_df.withColumn(
+    "channel_group_forlotuss",
+    F.when(F.col("channel") == "OFFLINE", "OFFLINE")
+    .when(F.col("channel").isin("Click and Collect", "Scheduled CC"), "Click & Collect")
+    .when(F.col("channel").isin("HATO"), "Line HATO")
+    .when(
+        F.col("channel").isin("GHS 1", "GHS 2", "GHS APP", "Scheduled HD"),
+        "Scheduled HD",
+    )
+    .when(F.col("channel").isin("HLE", "Scheduled HLE"), "Electronic Mall")
+    .when(
+        (F.col("channel").isin("OnDemand HD"))
+        & (F.col("format_name").isin("Hypermarket"))
+        & (F.col("store_id") != 5185),
+        "OnDemand Hypermarket",
+    )
+    .when(
+        (F.col("channel").isin("OnDemand HD"))
+        & (F.col("format_name").isin("Supermarket", "Mini Super")),
+        "OnDemand",
+    )
+    .when(F.col("channel").isin("Light Delivery"), "OnDemand")
+    .when(
+        (F.col("channel").isin("OnDemand HD"))
+        & (F.col("store_id") == 5185)
+        & (F.col("date_id") <= "2023-04-06"),
+        "OnDemand",
+    )
+    .when(
+        (F.col("channel").isin("OnDemand HD"))
+        & (F.col("store_id") == 5185)
+        & (F.col("date_id") >= "2023-04-07"),
+        "OnDemand Hypermarket",
+    )
+    .when(
+        F.col("channel").isin("Shopee", "Lazada", "O2O Lazada", "O2O Shopee"),
+        "Marketplace",
+    )
+    .when(
+        F.col("channel").isin(
+            "Ant Delivery ",
+            "Food Panda",
+            "Grabmart",
+            "Happy Fresh",
+            "Robinhood",
+            "We Fresh",
+            "7 MARKET",
+        ),
+        "Aggregator",
+    )
+    .when(F.col("channel").isin("TRUE SMART QR"), "Others")
+    .otherwise(F.lit("OFFLINE")),
+)
+
+data_df = data_df.withColumn(
+    "format_name",
+    F.when(
+        F.col("channel_group_forlotuss").isin(
+            "Scheduled HD",
+            "Electronic Mall",
+            "OnDemand",
+            "OnDemand Hypermarket",
+            "Click & Collect",
+            "Line HATO",
+            "Marketplace",
+            "Aggregator",
+            "Others",
+        ),
+        F.lit("ONLINE"),
+    ).otherwise(F.col("format_name")),
+)
+
+data_df = data_df.withColumn(
+    "channel_flag",
+    F.when(
+        F.col("format_name").isin("Hypermarket", "Supermarket", "Mini Super"),
+        F.lit("OFFLINE"),
+    ).otherwise(F.lit("ONLINE")),
+)
+
+
+# data_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_full_data_tmp")
+data_df.write.mode("overwrite").saveAsTable(
+    "tdm_seg.th_lotuss_ktl_txn_year_full_data_tmp"
+)
+
+# COMMAND ----------
+
+# DBTITLE 1,Skip, use 118wk Load Back Data
 # data full year
 # data_df = spark.table("tdm_seg.kritawatkrai_th_year_full_data_tmp")
 
 # data_df.display()
 
+# data_df = spark.table("tdm_seg.th_lotuss_ktl_txn_year_full_data_tmp")
+
 # COMMAND ----------
 
-# DBTITLE 1,Get Txn data from 118wk
+# DBTITLE 1,Get Txn data from 118wk , remove trader
 txn_cc = (spark.table("tdm_seg.v_latest_txn118wk")
            .where(F.col("week_id").between(start_week, end_week))
            .where(F.col("date_id").between(timeframe_start, timeframe_end))
@@ -151,112 +314,145 @@ txn_cc = (spark.table("tdm_seg.v_latest_txn118wk")
            .withColumn("store_region", F.when(F.col("store_region").isNull(), "Unidentified").otherwise(F.col("store_region")))
 )
 
+# Remove trader 
+trader_df = spark.table('tdm_seg.trader2023_subseg_master')
+max_quarter_id = 0
+max_quarter_id_trader = trader_df.agg(F.max('quarter_id')).collect()[0][0]
+max_txn_date_id = txn_cc.agg(F.max('date_id')).collect()[0][0]
+max_quarter_id_txn = spark.table("tdm.v_date_dim").where(F.col("date_id")==timeframe_end).select("quarter_id").collect()[0][0]
+
+if (max_quarter_id_trader >= max_quarter_id_txn):
+    max_quarter_id = max_quarter_id_txn
+else:
+    max_quarter_id = max_quarter_id_trader
+
+trader_df = spark.table('tdm_seg.trader2023_subseg_master').filter(F.col('quarter_id') == max_quarter_id)
+
+data_df = txn_cc.join(trader_df, on='household_id', how='leftanti')
+
+# COMMAND ----------
+
+# DBTITLE 1,Flag txn - time : time of day, week of month, week end flag
+# time of day / week of month flag 
+    
 date_dim = (spark
             .table('tdm.v_date_dim')
-            .select(['date_id','period_id','quarter_id','year_id','month_id','weekday_nbr',
-                     'day_in_month_nbr','day_in_year_nbr','day_num_sequence','week_num_sequence','promoweek_id'])
+            .select(['date_id','period_id','quarter_id','year_id','month_id','weekday_nbr','week_id',
+                     'day_in_month_nbr','day_in_year_nbr','day_num_sequence','week_num_sequence'])
+            .where(F.col("week_id").between(start_week, end_week))
+            .where(F.col("date_id").between(timeframe_start, timeframe_end))
                      .dropDuplicates()
             )
 
-data_df = txn_cc.join(date_dim, "date_id", "left")
+time_of_day_df = (data_df
+                  .join(date_dim.drop("week_id"), "date_id", "inner")
+                  .withColumn('decision_date', F.lit(decision_date))
+                  .withColumn('tran_hour', F.hour(F.col('tran_datetime')))
+)
+
+time_of_day_df = (time_of_day_df
+                  .withColumn('time_of_day', F.when((F.col('tran_hour') >= 5) & (F.col('tran_hour') <= 8), 'prework')
+                                              .when((F.col('tran_hour') >= 9) & (F.col('tran_hour') <= 11), 'morning')
+                                              .when(F.col('tran_hour') == 12, 'lunch')
+                                              .when((F.col('tran_hour') >= 13) & (F.col('tran_hour') <= 17), 'afternoon')
+                                              .when((F.col('tran_hour') >= 18) & (F.col('tran_hour') <= 20), 'evening')
+                                              .when(F.col('tran_hour') >= 21, 'late')
+                                              .when(F.col('tran_hour') <= 4, 'night')
+                                              .otherwise('def'))
+                  .withColumn('week_of_month', 
+                              F.when(F.col('day_in_month_nbr') <= 7, 1)
+                               .when((F.col('day_in_month_nbr') > 7) & (F.col('day_in_month_nbr') <= 14), 2)
+                               .when((F.col('day_in_month_nbr') > 14) & (F.col('day_in_month_nbr') <= 21), 3)
+                               .when(F.col('day_in_month_nbr') > 21, 4))
+                  .withColumn('weekend_flag', 
+                              F.when(F.col('weekday_nbr').isin(6,7), F.lit('Y'))
+                              .when((F.col('weekday_nbr') == 5) & (F.col('time_of_day').isin('evening', 'late')), 'Y')
+                              .otherwise('N'))
+)
+                        
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC
-# MAGIC ## Flagging 
-# MAGIC
-# MAGIC
-
-# COMMAND ----------
-
-# time of day / week of month flag 
-
-# .select('household_id','transaction_uid','tran_datetime','date_id','store_id','week_id','month_id','weekday_nbr','day_in_month_nbr','upc_id','card_issue_date', 'customer_id')\
-time_of_day_df = data_df\
-                        .withColumn('decision_date', F.lit(decision_date))\
-                        .withColumn('tran_hour', F.hour(F.col('tran_datetime')))
-
-time_of_day_df = time_of_day_df.withColumn('time_of_day', F.when((F.col('tran_hour') >= 5) & (F.col('tran_hour') <= 8), 'prework')\
-                                                         .when((F.col('tran_hour') >= 9) & (F.col('tran_hour') <= 11), 'morning')\
-                                                         .when(F.col('tran_hour') == 12, 'lunch')\
-                                                         .when((F.col('tran_hour') >= 13) & (F.col('tran_hour') <= 17), 'afternoon')\
-                                                         .when((F.col('tran_hour') >= 18) & (F.col('tran_hour') <= 20), 'evening')\
-                                                         .when(F.col('tran_hour') >= 21, 'late')\
-                                                         .when(F.col('tran_hour') <= 4, 'night')\
-                                                         .otherwise('def'))\
-                               .withColumn('week_of_month', F.when(F.col('day_in_month_nbr') <= 7, 1)\
-                                                           .when((F.col('day_in_month_nbr') > 7) & (F.col('day_in_month_nbr') <= 14), 2)\
-                                                           .when((F.col('day_in_month_nbr') > 14) & (F.col('day_in_month_nbr') <= 21), 3)\
-                                                           .when(F.col('day_in_month_nbr') > 21, 4))\
-                               .withColumn('weekend_flag', F.when(F.col('weekday_nbr').isin(6,7), F.lit('Y'))\
-                                                          .when((F.col('weekday_nbr') == 5) & (F.col('time_of_day').isin('evening', 'late')), 'Y')\
-                                                          .otherwise('N'))\
-                               .withColumn('region', F.when(F.col('region').isNull(), F.lit('Unidentified'))\
-                                                     .otherwise(F.col('region')))
-
-# COMMAND ----------
-
-# DBTITLE 1,Flag time of day, week of month
+# DBTITLE 1,Flag txn-time : festive week (xmax , songkran)
 # festival flag (+- 1 from last week in december) = xmas
 # month_id ends with 4 = april
 
-max_week_december = time_of_day_df.filter((F.col("month_id") % 100) == 12).filter(F.col("week_id").startswith(F.col("month_id").substr(1, 4))) \
+date_dim.agg(F.min("week_id"), F.max("week_id")).display()
+
+max_week_december = (date_dim
+                     .filter((F.col("month_id") % 100) == 12)
+                     .filter(F.col("week_id").startswith(F.col("month_id").substr(1, 4))) 
                      .agg(F.max(F.col("week_id")).alias("max_week_december")).collect()[0]["max_week_december"]
+)
 
-d = time_of_day_df.select('week_id').distinct()
+print(max_week_december)
+d = date_dim.select('week_id').distinct()
 
-df_with_lag_lead = d.withColumn("lag_week_id", lag("week_id").over(Window.orderBy("week_id"))) \
-                    .withColumn("lead_week_id", lead("week_id").over(Window.orderBy("week_id")))
+df_with_lag_lead = d.withColumn("lag_week_id", F.lag("week_id").over(Window.orderBy("week_id"))) \
+                    .withColumn("lead_week_id", F.lead("week_id").over(Window.orderBy("week_id")))
 
 week_before = df_with_lag_lead.filter(F.col("week_id") == max_week_december).select("lag_week_id").first()[0]
 week_after = df_with_lag_lead.filter(F.col("week_id") == max_week_december).select("lead_week_id").first()[0]
 
 xmas_week_id = [week_before, max_week_december, week_after]
 
-
+print(xmas_week_id)
 time_of_day_df = time_of_day_df.withColumn('fest_flag',F.when(F.col('week_id').isin(xmas_week_id), 'XMAS')\
                                                        .when(F.col('month_id').cast('string').endswith('04'), 'APRIL')\
                                                        .otherwise('NONE'))
 
 # print('Initial Count: ', time_of_day_df.count())
-                                                         
-# ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#last week in month list
-# weekday_nbr -> monday = 1, sunday = 7
-date_df = spark.table('tdm.v_date_dim').select(['date_id','period_id','quarter_id','year_id','month_id','weekday_nbr','day_in_month_nbr','day_in_year_nbr','day_num_sequence','week_num_sequence','promoweek_id','dp_data_dt'])\
-                                            .filter(F.col('week_id').between(start_week, end_week))\
-                                            .dropDuplicates()
 
-last_sat = date_df.filter(F.col('weekday_nbr') == 6).groupBy('month_id').agg(F.max('day_in_month_nbr').alias('day_in_month_nbr'))\
+# COMMAND ----------
+
+time_of_day_df.groupBy("fest_flag").agg(F.count_distinct("date_id")).display()
+
+# COMMAND ----------
+
+# DBTITLE 1,Flag txn-time : Last week of month
+# weekday_nbr -> monday = 1, sunday = 7
+# date_df = spark.table('tdm.v_date_dim').select(['date_id','period_id','quarter_id','year_id','month_id','weekday_nbr','day_in_month_nbr','day_in_year_nbr','day_num_sequence','week_num_sequence','promoweek_id','dp_data_dt'])\
+#                                             .filter(F.col('week_id').between(start_week, end_week))\
+#                                             .dropDuplicates()
+
+date_dim
+
+last_sat = date_dim.filter(F.col('weekday_nbr') == 6).groupBy('month_id').agg(F.max('day_in_month_nbr').alias('day_in_month_nbr'))\
                                                   .withColumn('last_weekend_flag',F.lit('Y'))
 
-last_sat_df = date_df.select('date_id', 'month_id', 'day_in_month_nbr')\
+last_sat_df = date_dim.select('date_id', 'month_id', 'day_in_month_nbr')\
                      .join(last_sat, on=['month_id','day_in_month_nbr'],how='inner')
 
 last_weekend_df = last_sat_df.select(F.col('month_id'),F.col('day_in_month_nbr'),F.col('date_id'),F.col('last_weekend_flag')) \
-                 .unionAll(last_sat_df.select(F.col('month_id'),F.col('day_in_month_nbr'), date_add(F.col('date_id'), 1).alias('date_id'),F.col('last_weekend_flag'))) \
-                 .unionAll(last_sat_df.select(F.col('month_id'),F.col('day_in_month_nbr'), date_sub(F.col('date_id'), 1).alias('date_id'),F.col('last_weekend_flag')))
+                 .unionAll(last_sat_df.select(F.col('month_id'),F.col('day_in_month_nbr'), F.date_add(F.col('date_id'), 1).alias('date_id'),F.col('last_weekend_flag'))) \
+                 .unionAll(last_sat_df.select(F.col('month_id'),F.col('day_in_month_nbr'), F.date_sub(F.col('date_id'), 1).alias('date_id'),F.col('last_weekend_flag')))
 
 last_weekend_df = last_weekend_df.select('date_id', 'last_weekend_flag')
 
-# ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# last week of month flag
+flagged_df = (time_of_day_df
+              .join(last_weekend_df, on='date_id',how='left')
+              .fillna('N', subset=['last_weekend_flag'])
+)
 
-flagged_df = time_of_day_df.join(last_weekend_df, on='date_id',how='left')\
-                           .fillna('N', subset=['last_weekend_flag'])
+# COMMAND ----------
 
-# print('Last Week of Month Count: ', flagged_df.count())
+flagged_df.select("date_id", "tran_datetime", "weekday_nbr", "day_in_month_nbr", "day_in_year_nbr",
+                  "tran_hour", "time_of_day", "week_of_month", "weekend_flag", "fest_flag", "last_weekend_flag").display(10)
 
+# COMMAND ----------
 
-# ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+flagged_df.where(F.col("last_weekend_flag").isin(["Y"])).select(F.dayofmonth("date_id").alias("day")).drop_duplicates().display()
+
+# COMMAND ----------
+
+# DBTITLE 1,Flag txn-time : Recency
 # Recency and Tenure Flag
 
 r = flagged_df.withColumn('end_date',F.lit(timeframe_end))\
           .withColumn('start_date',F.lit(timeframe_start))\
-          .withColumn('start_month_date', trunc(F.col('date_id'), 'month'))\
-          .withColumn('end_month_date', last_day(F.col('start_month_date')))\
-          .withColumn('months_from_end_date', months_between(F.col('end_date'),F.col('end_month_date')) + 1)\
+          .withColumn('start_month_date', F.trunc(F.col('date_id'), 'month'))\
+          .withColumn('end_month_date', F.last_day(F.col('start_month_date')))\
+          .withColumn('months_from_end_date', F.months_between(F.col('end_date'),F.col('end_month_date')) + 1)\
           .withColumn('last_3_flag',F.when(F.col('months_from_end_date') <= 3 , 'Y')\
                                     .otherwise('N'))\
           .withColumn('last_6_flag',F.when(F.col('months_from_end_date') <= 6 , 'Y')\
@@ -279,22 +475,28 @@ r = flagged_df.withColumn('end_date',F.lit(timeframe_end))\
           
 # print('Recency Count: ', r.count())
 
-# ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# COMMAND ----------
+
+# DBTITLE 1,Flag txn-product : premium & budget
 # Premium / Budget Flag
-product_df = spark.table('tdm.v_prod_dim_c').select(['upc_id','brand_name','division_id','division_name','department_id','department_name','department_code','section_id','section_name','section_code','class_id','class_name','class_code','subclass_id','subclass_name','subclass_code'])\
-                                                 .filter(F.col('division_id').isin(product_division))\
-                                                 .filter(F.col('country') == country)
+product_df = (spark.table('tdm.v_prod_dim_c')
+              .select(['upc_id','brand_name','division_id','division_name','department_id','department_name','department_code','section_id','section_name','section_code','class_id','class_name','class_code','subclass_id','subclass_name','subclass_code'])
+              .filter(F.col('division_id').isin([1,2,3,4,9,10,13]))
+              .filter(F.col('country').isin("th"))
+)
 
 temp_prod_df = product_df.select('upc_id', 'subclass_code', 'subclass_name')
 
-premium_prod_df = temp_prod_df.filter(F.col('subclass_name').ilike('%PREMIUM%'))\
-                              .filter(~col('subclass_name').ilike('%COUPON%'))\
-                              .withColumn('price_level',F.lit('PREMIUM'))\
-                              .distinct()
+premium_prod_df = (temp_prod_df
+                   .filter(F.col('subclass_name').ilike('%PREMIUM%'))
+                   .filter(~F.col('subclass_name').ilike('%COUPON%'))
+                   .withColumn('price_level',F.lit('PREMIUM'))
+                   ).distinct()
 
-budget_prod_df = temp_prod_df.filter(F.col('subclass_name').rlike('(?i)(budget|basic|value)'))\
-                             .withColumn('price_level',F.lit('BUDGET'))\
-                             .distinct()
+budget_prod_df = (temp_prod_df
+                  .filter(F.col('subclass_name').rlike('(?i)(budget|basic|value)'))
+                  .withColumn('price_level',F.lit('BUDGET'))
+                  ).distinct()
 
 price_level_df = premium_prod_df.unionByName(budget_prod_df)
 
@@ -304,23 +506,25 @@ more_flagged_df = r.join(price_level_df.select('upc_id','price_level'), on='upc_
 
 # print('Price Level Count: ', more_flagged_df.count())
 
+# COMMAND ----------
 
-# ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# DBTITLE 1,Flag txn-tender : single tender
 # Payment Method Flag
 
+# RESA tender
 resa_tender = spark.table("tdm.v_resa_group_resa_tran_tender")
 resa_tender = (
-    resa_tender.withColumn("tender_type_group", trim(F.col("tender_type_group")))
+    resa_tender.withColumn("tender_type_group", F.trim(F.col("tender_type_group")))
     .withColumn(
         "set_tndr_type",
-        array_distinct(
-            collect_list(F.col("tender_type_group")).over(
+        F.array_distinct(
+            F.collect_list(F.col("tender_type_group")).over(
                 Window.partitionBy(["tran_seq_no", "store", "day"])
             )
         ),
     )
     # .withColumn("set_tndr_type", F.collect_set(F.col("tender_type_group")).over(Window.partitionBy("tran_seq_no")))
-    .withColumn("n_tndr_type", size(F.col("set_tndr_type")))
+    .withColumn("n_tndr_type", F.size(F.col("set_tndr_type")))
     .select(
         "tran_seq_no", "store", "day", "dp_data_dt", "n_tndr_type", "tender_type_group"
     )
@@ -337,20 +541,22 @@ resa_tender = (
     .select("transaction_uid_orig", "store_id", "day", "date_id", "sngl_tndr_type")
     .drop_duplicates()
 )
+
+# OSM (Online) Tender
 oms_tender = spark.table("tdm_seg.v_oms_group_payment").filter(F.col("Country") == "th")
 
 oms_tender = (
-    oms_tender.withColumn("PaymentMethod", trim(F.col("PaymentMethod")))
+    oms_tender.withColumn("PaymentMethod", F.trim(F.col("PaymentMethod")))
     .withColumn(
         "set_tndr_type",
-        array_distinct(
-            collect_list(F.col("PaymentMethod")).over(
+        F.array_distinct(
+            F.collect_list(F.col("PaymentMethod")).over(
                 Window.partitionBy(["transaction_uid"])
             )
         ),
     )
     # .withColumn("set_tndr_type", F.collect_set(F.col("tender_type_group")).over(Window.partitionBy("tran_seq_no")))
-    .withColumn("n_tndr_type", size(F.col("set_tndr_type")))
+    .withColumn("n_tndr_type", F.size(F.col("set_tndr_type")))
     .select(
         "transaction_uid", "dp_data_dt", "n_tndr_type", "PaymentMethod"
     )
@@ -379,56 +585,64 @@ filter_oms_tender = oms_tender.withColumnRenamed('sngl_tndr_type', 'oms_payment_
                               .withColumnRenamed('transaction_uid_orig', 'transaction_uid')\
                               .dropDuplicates()
 
+# Add transaction type to txn
 flag_df = more_flagged_df.join(filter_resa_tender.select('transaction_uid','store_id','date_id','resa_payment_method'), 
                                     on=['transaction_uid', 'store_id', 'date_id'], how='left')\
                               .join(filter_oms_tender.select('transaction_uid','oms_payment_method'), on='transaction_uid', how='left')
 
-flag_df = flag_df.withColumn('resa_payment_method',F.when(F.col('resa_payment_method').isNull(),F.lit('Unidentified'))\
-                                                             .otherwise(F.col('resa_payment_method')))\
-                           .withColumn('payment_flag',F.when((F.col('resa_payment_method') == 'CASH') | (F.col('oms_payment_method') == 'CASH'), 'CASH')\
-                                                      .when((F.col('resa_payment_method') == 'CCARD') | (F.col('oms_payment_method') == 'CreditCard'), 'CARD')\
-                                                      .when((F.col('resa_payment_method') == 'COUPON'), 'COUPON')\
-                                                      .when((F.col('resa_payment_method') == 'VOUCH'), 'VOUCHER')\
-                                                      .otherwise('OTHER'))
+flag_df = (flag_df
+           .withColumn('resa_payment_method',
+                       F.when(F.col('resa_payment_method').isNull(), F.lit('Unidentified'))
+                        .otherwise(F.col('resa_payment_method')))
+           .withColumn('payment_flag',
+                       F.when((F.col('resa_payment_method') == 'CASH') | (F.col('oms_payment_method') == 'CASH'), 'CASH')
+                        .when((F.col('resa_payment_method') == 'CCARD') | (F.col('oms_payment_method') == 'CreditCard'), 'CARD')
+                            .when((F.col('resa_payment_method') == 'COUPON'), 'COUPON')
+                            .when((F.col('resa_payment_method') == 'VOUCH'), 'VOUCHER')
+                            .otherwise('OTHER'))
+)
 
-# get card_issue_date for nulls (use first transaction instead)
-first_tran = spark.table('tdm_seg.mylotuss_customer_1st_txn_V1').select('golden_record_external_id_hash', 'tran_datetime')\
-                                                                     .withColumnRenamed('tran_datetime', 'first_tran_datetime')
+# COMMAND ----------
 
-flag_df = flag_df.join(first_tran, on='golden_record_external_id_hash', how='left')\
-                           .withColumn('card_issue_date',F.when(F.col('card_issue_date').isNull(),F.col('first_tran_datetime'))\
-                                                         .otherwise(F.col('card_issue_date')))\
-                           .withColumn('CC_TENURE', round((datediff(F.col('end_date'),F.col('card_issue_date'))) / 365,1))\
-                           .withColumn('one_year_history',F.when(F.col('first_tran_datetime') <=F.col('date_id'), 1)\
-                                                          .otherwise(0))
-                                                      
-# removing traders 
-trader_df = spark.table('tdm_seg.trader2023_subseg_master')
-max_quarter_id = 0
-max_quarter_id_trader = trader_df.agg(F.max('quarter_id')).collect()[0][0]
-max_quarter_id_txn = flag_df.agg(F.max('quarter_id')).collect()[0][0]
+# DBTITLE 1,Customer dim : card issue , first txn
+#--- get card_issue_date for nulls (use first transaction instead)
 
-if (max_quarter_id_trader >= max_quarter_id_txn):
-  max_quarter_id = max_quarter_id_txn
-else:
-  max_quarter_id = max_quarter_id_trader
+max_card_issue = (spark
+                  .table('tdm.v_customer_dim')
+                  .groupBy("household_id", "golden_record_external_id_hash")
+                  .agg(F.max("card_issue_date").alias("card_issue_date"))
+                  .drop_duplicates()
+)
 
-trader_df = spark.table('tdm_seg.trader2023_subseg_master').filter(F.col('quarter_id') == max_quarter_id)
-
-flag_df = flag_df.join(trader_df, on='household_id', how='leftanti')
-
-# ping()
+first_tran = (spark.table('tdm_seg.mylotuss_customer_1st_txn_V1')
+              .select('golden_record_external_id_hash', 'tran_datetime')
+              .withColumnRenamed('tran_datetime', 'first_tran_datetime')
+              )
+               
+flag_df = (
+    flag_df
+    .join(max_card_issue, on='household_id', how='left')
+    .join(first_tran, on='golden_record_external_id_hash', how='left')
+    .withColumn('card_issue_date',
+                F.when(F.col('card_issue_date').isNull(),
+                       F.col('first_tran_datetime')).otherwise(F.col('card_issue_date')))
+    .withColumn('CC_TENURE', F.round((F.datediff(F.col('end_date'),F.col('card_issue_date'))) / 365,1))
+    .withColumn('one_year_history',F.when(F.col('first_tran_datetime') <=F.col('date_id'), 1).otherwise(0))
+    )
 
 # COMMAND ----------
 
 # DBTITLE 1,Save Table Midway
-flag_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_full_data_flag_tmp")
+flag_df.write.mode("overwrite").saveAsTable("tdm_seg.thanaritboo_th_lotuss_ktl_full_data_flag_tmp")
 
 # COMMAND ----------
 
 # DBTITLE 1,Load Table Back
-flag_df = spark.table("tdm_seg.kritawatkrai_th_year_full_data_flag_tmp")
+flag_df = spark.table("tdm_seg.thanaritboo_th_lotuss_ktl_full_data_flag_tmp")
 
+# COMMAND ----------
+
+# MAGIC %md ## Promo features
 
 # COMMAND ----------
 
@@ -2321,7 +2535,7 @@ more_agg_df = more_agg_df.withColumn('THICK_FLAG',F.when((F.col('Total_Spend')>2
                                                 & (F.col('Q1_Spend')>0) & (F.col('Q2_Spend')>0) & (F.col('Q3_Spend')>0) & (F.col('Q4_Spend')>0), 1)\
                                          .otherwise(0))\
                .withColumn('AFFLUENCE_UM',F.when(F.col('truprice_seg_desc').isin('Most Price Insensitive', 'Price Insensitive'),F.lit(1))\
-                                          .otherwise(lit(0)))\
+                                          .otherwise(F.lit(0)))\
                .withColumn('AFFLUENCE_LA',F.lit(0))\
                .drop('truprice_seg_desc')
                

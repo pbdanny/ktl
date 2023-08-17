@@ -1,0 +1,9 @@
+{
+  "MAX_BACK_DAY": 380,
+  "test": {
+    "MIN_DATA_DATE": "2022-08-22",
+    "MAX_DATA_DATE": "2022-09-04"
+  },
+  "PROP_HDE_CCARD_VISIT": 0.2,
+  "prd_gr_ver": "202205"
+}

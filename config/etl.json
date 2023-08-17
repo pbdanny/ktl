@@ -1,5 +1,19 @@
-{"country": "th", 
-"store_format" : [1,2,3,4,5],
-"product_division" : [1,2,3,4,9,10,13],
-"decision_date": "2023-08-13"
- }
+{
+  "AZAY": {
+    "encoding": "windows-1252",
+    "dtype": { "dib_cust_code": "str", "DHB_Model_Date": "str" },
+    "insurer_nm": "AAC",
+    "date_format": "LL/d/yyyy"
+  },
+  "CIGNA": {
+    "encoding": "utf-8",
+    "dtype": {
+      "dib_cust_code": "str",
+      "lead_shop_payment_type": "str",
+      "Interested_Status": "str",
+      "Follow_Up_Status": "str"
+    },
+    "insurer_nm": "CIG",
+    "date_format": "yyyy-MM-dd"
+  }
+}

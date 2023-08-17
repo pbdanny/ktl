@@ -1,0 +1,5 @@
+{
+  "dbfs_path": "/dbfs/FileStore/niti/LMP/fdbk",
+  "abfss_prefix": "abfss://data@pvtdmdlsazc02.dfs.core.windows.net/tdm_seg.db/niti/lmp/insurance_lead",
+  "prod_gr_prefix": "abfss://data@pvtdmdlsazc02.dfs.core.windows.net/tdm_seg.db/thanakrit/lmp/insurance_lead"
+}

@@ -1,4 +1,9 @@
 # Databricks notebook source
+# MAGIC %md ##Original Source Code
+# MAGIC /Users/kritawats.kraiwitchaicharoen@lotuss.com/Project/(Clone) KTL
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Initialization + Load config
 # MAGIC
@@ -24,26 +29,22 @@ from pyspark.sql import types as T
 from pyspark.sql import Window
 from pyspark.sql import SparkSession
 
-from utils import files
-
 spark = SparkSession.builder.appName("lmp").getOrCreate()
 
 # COMMAND ----------
 
 # DBTITLE 1,Load ETL config
-conf_mapper = files.conf_reader("../config/etl.json")
-country = conf_mapper["country"]
-print(f"Country : {country}")
-product_division = conf_mapper["product_division"]
-print(f"{product_division}")
-store_format = conf_mapper["store_format"]
-print(f"{store_format}")
+from utils import files
+
+conf_path = "../config/snap_txn.json"
+
+conf_mapper = files.conf_reader("../config/snap_txn.json")
 decision_date = conf_mapper["decision_date"]
 print(f"{decision_date}")
 
 # COMMAND ----------
 
-# DBTITLE 1,Decision date -> define start , end timeframe for txn
+# DBTITLE 1,Decision date -> define start , end timeframe for txn -> conf_mapper
 # decision date = latest data end date
 decision_date =  datetime.strptime(conf_mapper["decision_date"], '%Y-%m-%d').date()
 
@@ -51,6 +52,8 @@ decision_date =  datetime.strptime(conf_mapper["decision_date"], '%Y-%m-%d').dat
 # decision_date =  datetime.strptime("2023-08-13", '%Y-%m-%d').date() + timedelta(days=365)
 #----
 
+# timeframe_end = 1 month back from decision date
+# timeframe_start = 1 year from timeframe_end
 timeframe_end = date(decision_date.year, decision_date.month - 1, 1) - timedelta(days=1)
 timeframe_start = (timeframe_end - relativedelta(months=11)).replace(day=1)
 
@@ -65,6 +68,13 @@ start_week = date_dim.filter(F.col('date_id').between(timeframe_start, timeframe
 end_week = date_dim.filter(F.col('date_id').between(timeframe_start, timeframe_end)).agg(F.max('week_id')).collect()[0][0]
 
 print(f"start_week : {start_week}, end_week : {end_week}")
+
+conf_mapper["timeframe_end"] = timeframe_end.strftime("%Y-%m-%d")
+conf_mapper["timeframe_start"] = timeframe_start.strftime("%Y-%m-%d")
+conf_mapper["start_week"] = start_week
+conf_mapper["end_week"] = end_week
+
+files.conf_writer(conf_mapper, conf_path)
 
 # COMMAND ----------
 
@@ -307,9 +317,11 @@ data_df.write.mode("overwrite").saveAsTable(
 # COMMAND ----------
 
 # DBTITLE 1,Get Txn data from 118wk , remove trader
+conf_mapper = files.conf_reader(conf_path)
+
 txn_cc = (spark.table("tdm_seg.v_latest_txn118wk")
            .where(F.col("week_id").between(start_week, end_week))
-           .where(F.col("date_id").between(timeframe_start, timeframe_end))
+           .where(F.col("date_id").between(conf_mapper["timeframe_start"], conf_mapper["timeframe_end"]))
            .where(F.col("cc_flag").isin(["cc"]))
            .withColumn("store_region", F.when(F.col("store_region").isNull(), "Unidentified").otherwise(F.col("store_region")))
 )
@@ -329,6 +341,21 @@ else:
 trader_df = spark.table('tdm_seg.trader2023_subseg_master').filter(F.col('quarter_id') == max_quarter_id)
 
 data_df = txn_cc.join(trader_df, on='household_id', how='leftanti')
+
+# COMMAND ----------
+
+from utils import files
+
+conf_path = "../config/snap_txn.json"
+
+from features import snap_txn
+
+txn_cc = snap_txn.get_txn_cc_exc_trdr(spark, conf_path)
+txn_time = snap_txn.map_txn_time(spark, conf_path, txn_cc)
+
+# COMMAND ----------
+
+files.conf_reader(conf_path)
 
 # COMMAND ----------
 
@@ -402,10 +429,6 @@ time_of_day_df = time_of_day_df.withColumn('fest_flag',F.when(F.col('week_id').i
                                                        .otherwise('NONE'))
 
 # print('Initial Count: ', time_of_day_df.count())
-
-# COMMAND ----------
-
-time_of_day_df.groupBy("fest_flag").agg(F.count_distinct("date_id")).display()
 
 # COMMAND ----------
 

@@ -9,6 +9,11 @@ def conf_reader(path):
     f.close()
     return mapper
 
+@logger
+def conf_writer(mapper, path):
+    with open(path, "w") as f:
+        json.dump(mapper, f)
+    return        
 
 @logger
 def save(df, path, format="delta", mode="overwrite", overwriteSchema=None):

@@ -1,7 +1,6 @@
 import json
 from .logger import logger
 
-
 @logger
 def conf_reader(path):
     f = open(path, "r")

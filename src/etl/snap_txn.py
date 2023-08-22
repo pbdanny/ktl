@@ -3,7 +3,7 @@ from pyspark.sql import types as T
 from pyspark.sql import Window
 from pyspark.sql import SparkSession
 
-from utils.logger import logger
+from src.utils.logger import logger
 import os
 import sys
 
@@ -12,7 +12,7 @@ sys.path.append('../')
 @logger
 def get_txn_cc_exc_trdr(spark, conf_path):
     
-    from utils import files
+    from src.utils import files
     conf_mapper = files.conf_reader(conf_path)
 
     txn_cc = (spark.table("tdm_seg.v_latest_txn118wk")
@@ -39,11 +39,12 @@ def get_txn_cc_exc_trdr(spark, conf_path):
 
     return data_df
 
+@logger
 def map_txn_time(spark, conf_path, txn):
-    from utils import files
+    from src.utils import files
     conf_mapper = files.conf_reader(conf_path)
 
-    date_dim = (spark
+    scope_date_dim = (spark
                 .table('tdm.v_date_dim')
                 .select(['date_id','period_id','quarter_id','year_id','month_id','weekday_nbr','week_id',
                         'day_in_month_nbr','day_in_year_nbr','day_num_sequence','week_num_sequence'])
@@ -53,7 +54,7 @@ def map_txn_time(spark, conf_path, txn):
                 )
 
     time_of_day_df = (txn
-                    .join(date_dim.drop("week_id"), "date_id", "inner")
+                    .join(scope_date_dim.drop("week_id"), "date_id", "inner")
                     .withColumn('decision_date', F.lit(conf_mapper["decision_date"]))
                     .withColumn('tran_hour', F.hour(F.col('tran_datetime')))
     )
@@ -78,13 +79,13 @@ def map_txn_time(spark, conf_path, txn):
                                 .otherwise('N'))
     )
     # festive week : Songkran, NewYear
-    max_week_december = (date_dim
+    max_week_december = (scope_date_dim
                             .filter((F.col("month_id") % 100) == 12)
                             .filter(F.col("week_id").startswith(F.col("month_id").substr(1, 4))) 
                             .agg(F.max(F.col("week_id")).alias("max_week_december")).collect()[0]["max_week_december"]
         )
 
-    d = date_dim.select('week_id').distinct()
+    d = scope_date_dim.select('week_id').distinct()
 
     df_with_lag_lead = d.withColumn("lag_week_id", F.lag("week_id").over(Window.orderBy("week_id"))) \
                         .withColumn("lead_week_id", F.lead("week_id").over(Window.orderBy("week_id")))
@@ -102,10 +103,10 @@ def map_txn_time(spark, conf_path, txn):
     files.conf_writer(conf_mapper, conf_path)
 
     # Last week of month (Payweey)
-    last_sat = date_dim.filter(F.col('weekday_nbr') == 6).groupBy('month_id').agg(F.max('day_in_month_nbr').alias('day_in_month_nbr'))\
+    last_sat = scope_date_dim.filter(F.col('weekday_nbr') == 6).groupBy('month_id').agg(F.max('day_in_month_nbr').alias('day_in_month_nbr'))\
                                                     .withColumn('last_weekend_flag',F.lit('Y'))
 
-    last_sat_df = date_dim.select('date_id', 'month_id', 'day_in_month_nbr')\
+    last_sat_df = scope_date_dim.select('date_id', 'month_id', 'day_in_month_nbr')\
                         .join(last_sat, on=['month_id','day_in_month_nbr'],how='inner')
 
     last_weekend_df = last_sat_df.select(F.col('month_id'),F.col('day_in_month_nbr'),F.col('date_id'),F.col('last_weekend_flag')) \

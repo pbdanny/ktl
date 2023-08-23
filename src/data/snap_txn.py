@@ -14,10 +14,15 @@ def get_txn_cc_exc_trdr(spark, conf_path):
     
     from src.utils import files
     conf_mapper = files.conf_reader(conf_path)
+    
+    start_week = conf_mapper["data"]["start_week"]
+    end_week = conf_mapper["data"]["end_week"]
+    timeframe_start = conf_mapper["data"]["timeframe_start"]
+    timeframe_end = conf_mapper["data"]["timeframe_end"]
 
     txn_cc = (spark.table("tdm_seg.v_latest_txn118wk")
-           .where(F.col("week_id").between(conf_mapper["start_week"], conf_mapper["end_week"]))
-           .where(F.col("date_id").between(conf_mapper["timeframe_start"], conf_mapper["timeframe_end"]))
+           .where(F.col("week_id").between(start_week, end_week))
+           .where(F.col("date_id").between(timeframe_start, timeframe_end))
            .where(F.col("cc_flag").isin(["cc"]))
            .withColumn("store_region", F.when(F.col("store_region").isNull(), "Unidentified").otherwise(F.col("store_region")))
     )
@@ -27,7 +32,7 @@ def get_txn_cc_exc_trdr(spark, conf_path):
     max_quarter_id = 0
     max_quarter_id_trader = trader_df.agg(F.max('quarter_id')).collect()[0][0]
     max_txn_date_id = txn_cc.agg(F.max('date_id')).collect()[0][0]
-    max_quarter_id_txn = spark.table("tdm.v_date_dim").where(F.col("date_id")==conf_mapper["timeframe_end"]).select("quarter_id").collect()[0][0]
+    max_quarter_id_txn = spark.table("tdm.v_date_dim").where(F.col("date_id")==timeframe_end).select("quarter_id").collect()[0][0]
 
     if (max_quarter_id_trader >= max_quarter_id_txn):
         max_quarter_id = max_quarter_id_txn

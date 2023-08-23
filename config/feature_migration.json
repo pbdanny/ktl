@@ -1,1 +1,25 @@
-{"storage": {"dbfs": "", "abfss": "", "hive": {"prefix": "tdm_seg.th_lotuss_thanakrit_ktl_", "snap_txn": "tdm_seg.th_lotuss_thanakrit_ktl_snap_txn"}}, "data": {"decision_date": "2023-08-13", "gap_decision_n_month": 1, "timeframe_end": "2023-07-12", "timeframe_start": "2022-08-01", "start_week": 202232, "end_week": 202329}, "features": {"xmaxs_week_id": [202251, 202252, 202301]}}
+{
+    "storage": {
+        "dbfs": "",
+        "abfss": "",
+        "hive": {
+            "prefix": "tdm_seg.th_lotuss_thanakrit_ktl_",
+            "snap_txn": "tdm_seg.th_lotuss_thanakrit_ktl_snap_txn"
+        }
+    },
+    "data": {
+        "decision_date": "2023-08-13",
+        "gap_decision_n_month": 1,
+        "timeframe_end": "2023-07-12",
+        "timeframe_start": "2022-08-01",
+        "start_week": 202232,
+        "end_week": 202329
+    },
+    "features": {
+        "xmaxs_week_id": [
+            202251,
+            202252,
+            202301
+        ]
+    }
+}

@@ -94,7 +94,3 @@ conf_mapper["storage"]["hive"]["prefix"]
 
 conf_mapper["storage"]["hive"]["snap_txn"] = conf_mapper["storage"]["hive"]["prefix"] + "snap_txn"
 conf.conf_writer(conf_mapper, conf_path)
-
-# COMMAND ----------
-
-

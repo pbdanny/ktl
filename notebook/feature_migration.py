@@ -65,6 +65,7 @@ files.conf_writer(conf_mapper, conf_path)
 
 # COMMAND ----------
 
+# DBTITLE 1,Snap Txn
 from src.utils import files
 
 conf_path = "../config/feature_migration.json"
@@ -74,9 +75,26 @@ conf_mapper = files.conf_reader(conf_path)
 # COMMAND ----------
 
 from src.data import snap_txn
-
 cc_txn = snap_txn.get_txn_cc_exc_trdr(spark, conf_path)
-cc_txn_map_time = snap_txn.map_txn_time(spark, conf_path, cc_txn)
-type(cc_txn_map_time)
 
 # COMMAND ----------
+
+conf_mapper["storage"]["hive"]["prefix"]
+
+# COMMAND ----------
+
+(cc_txn
+ .sample(0.001)
+ .write
+ .mode("overwrite")
+ .saveAsTable(conf_mapper["storage"]["hive"]["prefix"] + "snap_txn")
+)
+
+# COMMAND ----------
+
+conf_mapper["storage"]["hive"]["snap_txn"] = conf_mapper["storage"]["hive"]["prefix"] + "snap_txn"
+files.conf_writer(conf_mapper, conf_path)
+
+# COMMAND ----------
+
+

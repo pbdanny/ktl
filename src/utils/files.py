@@ -3,15 +3,14 @@ from .logger import logger
 
 @logger
 def conf_reader(path):
-    f = open(path, "r")
-    mapper = json.loads(f.read())
-    f.close()
+    with open(path, "r") as f:
+        mapper = json.loads(f.read())
     return mapper
 
 @logger
 def conf_writer(mapper, path):
     with open(path, "w") as f:
-        json.dump(mapper, f)
+        json.dump(mapper, f, indent=4, sort_keys=True)
     return        
 
 @logger

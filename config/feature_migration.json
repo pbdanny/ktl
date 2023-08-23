@@ -2,7 +2,10 @@
     "storage": {
         "dbfs":"",
         "abfss":"",
-        "hive":"tdm_seg.th_lotuss_thanakrit_ktl_"
+        "hive":{
+            "prefix" : "tdm_seg.th_lotuss_thanakrit_ktl_",
+            "snap_txn" : ""
+        }
     },
     "data": {
         "decision_date": "2023-08-13",

@@ -65,8 +65,6 @@ files.conf_writer(conf_mapper, conf_path)
 
 # COMMAND ----------
 
-<<<<<<< Updated upstream
-=======
 from src.utils import files
 
 conf_path = "../config/feature_migration.json"
@@ -75,7 +73,6 @@ conf_mapper = files.conf_reader(conf_path)
 
 # COMMAND ----------
 
->>>>>>> Stashed changes
 from src.data import snap_txn
 
 cc_txn = snap_txn.get_txn_cc_exc_trdr(spark, conf_path)

@@ -25,7 +25,7 @@ spark = SparkSession.builder.appName("lmp").getOrCreate()
 # DBTITLE 1,Load Config
 from src.utils import files
 
-conf_path = "../config/feaure_migration.json"
+conf_path = "../config/feature_migration.json"
 
 conf_mapper = files.conf_reader(conf_path)
 
@@ -36,16 +36,12 @@ print(f"{decision_date} , with gap months from decision date to data end date {g
 # COMMAND ----------
 
 # decision date = latest data end date
-decision_date =  datetime.strptime(conf_mapper["decision_date"], '%Y-%m-%d').date()
+decision_date =  datetime.strptime(decision_date, '%Y-%m-%d').date()
 
-#--- For Code testing 
-# decision_date =  datetime.strptime("2023-08-13", '%Y-%m-%d').date() + timedelta(days=365)
-#----
-
-# timeframe_end = 1 month back from decision date
+# timeframe_end = end of -2 months from decision date
 # timeframe_start = 1 year from timeframe_end
-timeframe_end = date(decision_date.year, decision_date.month - gap_decision_n_month, 1) - timedelta(days=1)
-timeframe_start = (timeframe_end - relativedelta(months=11)).replace(day=1)
+timeframe_end = decision_date - relativedelta(months=+float(gap_decision_n_month)) - relativedelta(days=+1)
+timeframe_start = (timeframe_end - relativedelta(months=+11)).replace(day=1)
 
 print(f"decision date : {decision_date}\ntxn start date : {timeframe_start}\ntxn end date : {timeframe_end}")
 print(f"gap days from decision - txn end : {(decision_date - timeframe_end).days}")
@@ -62,10 +58,10 @@ print(f"start_week : {start_week}, end_week : {end_week}")
 # COMMAND ----------
 
 # DBTITLE 1,Writeback config
-conf_mapper["timeframe_end"] = timeframe_end.strftime("%Y-%m-%d")
-conf_mapper["timeframe_start"] = timeframe_start.strftime("%Y-%m-%d")
-conf_mapper["start_week"] = start_week
-conf_mapper["end_week"] = end_week
+conf_mapper["data"]["timeframe_end"] = timeframe_end.strftime("%Y-%m-%d")
+conf_mapper["data"]["timeframe_start"] = timeframe_start.strftime("%Y-%m-%d")
+conf_mapper["data"]["start_week"] = start_week
+conf_mapper["data"]["end_week"] = end_week
 
 files.conf_writer(conf_mapper, conf_path)
 

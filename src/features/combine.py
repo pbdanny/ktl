@@ -17,9 +17,9 @@ def combine_features(spark, prjct_nm, test):
     Load Model features
     ----
     """
-    from utils import files
-    mnt_mapper = files.conf_reader("../config/mnt.json")
-    feature_mapper = files.conf_reader("../config/features.json")
+    from src.utils import conf
+    mnt_mapper = conf.conf_reader("../config/mnt.json")
+    feature_mapper = conf.conf_reader("../config/features.json")
     abfss_prefix = mnt_mapper["abfss_prefix"]
     test_suffix = "_test" if test else ""
     feats = {}
@@ -42,11 +42,11 @@ def aggregate_features(prjct_nm, test, feats):
         feats: dict of features
 
     '''
-    from utils import files
+    from src.utils import conf
     from functools import reduce
 
-    mnt_mapper = files.conf_reader("../config/mnt.json")
-    feature_mapper = files.conf_reader("../config/features.json")
+    mnt_mapper = conf.conf_reader("../config/mnt.json")
+    feature_mapper = conf.conf_reader("../config/features.json")
     abfss_prefix = mnt_mapper["abfss_prefix"]
     test_suffix = "_test" if test else ""
     '''
@@ -82,7 +82,7 @@ def aggregate_features(prjct_nm, test, feats):
     all_feat_cust_details = all_feat.join(
         cust_details_feat, "household_id", "inner")
 
-    files.save(all_feat_cust_details, os.path.join(abfss_prefix, prjct_nm, "features", f"all_feature{test_suffix}.parquet"
+    conf.save(all_feat_cust_details, os.path.join(abfss_prefix, prjct_nm, "features", f"all_feature{test_suffix}.parquet"
                                                    ), format="parquet", mode="overwrite", overwriteSchema=True)
 
 

@@ -1,3 +1,4 @@
+from src.utils import conf
 from utils.logger import logger
 import os
 import sys
@@ -20,9 +21,9 @@ def main(spark, dbutils, prjct_nm, txnItem, test=False):
             txnItem, transaction item class from edm_class
             test, test default False
     '''
-    from utils import files, segmentation
-    conf_tnx = files.conf_reader("../config/transaction.json")
-    mnt_mapper = files.conf_reader("../config/mnt.json")
+    from utils import segmentation
+    conf_tnx = conf.conf_reader("../config/transaction.json")
+    mnt_mapper = conf.conf_reader("../config/mnt.json")
     abfss_prefix, dbfs_path = (
         mnt_mapper["abfss_prefix"], Path(mnt_mapper["dbfs_path"]))
 
@@ -96,7 +97,7 @@ def main(spark, dbutils, prjct_nm, txnItem, test=False):
         shp_ms.drop("transaction_uid"), on=["transaction_concat", "week_id"], how="left")
     filename = "txn_cc_sngl_tndr.parquet" if not test else "txn_cc_sngl_tndr_test.parquet"
 
-    files.save(txn_tndr_shp_ms, os.path.join(abfss_prefix, prjct_nm,
+    conf.save(txn_tndr_shp_ms, os.path.join(abfss_prefix, prjct_nm,
                filename), format="parquet", mode="overwrite", overwriteSchema=True)
 
 

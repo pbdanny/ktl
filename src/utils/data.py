@@ -1,9 +1,9 @@
 class Data():
     def __init__(self, spark, prjct_nm, test) -> None:
-        from . import files
+        from . import conf
         self.spark = spark
-        self.mnt_mapper = files.conf_reader("../config/mnt.json")
-        self.feature_mapper = files.conf_reader("../config/features.json")
+        self.mnt_mapper = conf.conf_reader("../config/mnt.json")
+        self.feature_mapper = conf.conf_reader("../config/features.json")
         self.abfss_prefix = self.mnt_mapper["abfss_prefix"]
         self.prjct_nm = prjct_nm
         self.test_suffix = "_test" if test else ""

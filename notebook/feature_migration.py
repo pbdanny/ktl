@@ -23,11 +23,11 @@ spark = SparkSession.builder.appName("lmp").getOrCreate()
 # COMMAND ----------
 
 # DBTITLE 1,Load Config
-from src.utils import files
+from src.utils import conf
 
 conf_path = "../config/feature_migration.json"
 
-conf_mapper = files.conf_reader(conf_path)
+conf_mapper = conf.conf_reader(conf_path)
 
 # COMMAND ----------
 
@@ -61,16 +61,16 @@ conf_mapper["data"]["timeframe_start"] = timeframe_start.strftime("%Y-%m-%d")
 conf_mapper["data"]["start_week"] = start_week
 conf_mapper["data"]["end_week"] = end_week
 
-files.conf_writer(conf_mapper, conf_path)
+conf.conf_writer(conf_mapper, conf_path)
 
 # COMMAND ----------
 
 # DBTITLE 1,Snap Txn
-from src.utils import files
+from src.utils import conf
 
 conf_path = "../config/feature_migration.json"
 
-conf_mapper = files.conf_reader(conf_path)
+conf_mapper = conf.conf_reader(conf_path)
 
 # COMMAND ----------
 
@@ -93,7 +93,7 @@ conf_mapper["storage"]["hive"]["prefix"]
 # COMMAND ----------
 
 conf_mapper["storage"]["hive"]["snap_txn"] = conf_mapper["storage"]["hive"]["prefix"] + "snap_txn"
-files.conf_writer(conf_mapper, conf_path)
+conf.conf_writer(conf_mapper, conf_path)
 
 # COMMAND ----------
 

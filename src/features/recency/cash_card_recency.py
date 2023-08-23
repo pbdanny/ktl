@@ -25,9 +25,9 @@ def cash_card_recency(spark, prjct_nm, txn_cust_r360, test=False):
         Store_Format : HDE
         if customer with proportion of visit@HDE by card vs total visit@HDE >= 0.2 -> flag as card customer
     '''
-    from utils import files
-    conf_mapper = files.conf_reader("../config/transaction.json")
-    mnt_mapper = files.conf_reader("../config/mnt.json")
+    from src.utils import conf
+    conf_mapper = conf.conf_reader("../config/transaction.json")
+    mnt_mapper = conf.conf_reader("../config/mnt.json")
     abfss_prefix = mnt_mapper["abfss_prefix"]
     PROP_HDE_CCARD_VISIT = conf_mapper["PROP_HDE_CCARD_VISIT"]
 
@@ -63,5 +63,5 @@ def cash_card_recency(spark, prjct_nm, txn_cust_r360, test=False):
          .fillna("cash", subset=["cash_card_customer_flag"])
          )
     filename = "cust_hde_r360_cash_card.parquet" if not test else "cust_hde_r360_cash_card_test.parquet"
-    files.save(cust_gr, os.path.join(abfss_prefix, prjct_nm, "cust_cash_card",
+    conf.save(cust_gr, os.path.join(abfss_prefix, prjct_nm, "cust_cash_card",
                filename), format="parquet", mode="overwrite", overwriteSchema=True)

@@ -11,9 +11,9 @@ sys.path.append('../')
 
 @logger
 def load_prod_group(spark):
-    from utils import files
-    mnt_mapper = files.conf_reader("../config/mnt.json")
-    conf_mapper = files.conf_reader("../config/transaction.json")
+    from src.utils import conf
+    mnt_mapper = conf.conf_reader("../config/mnt.json")
+    conf_mapper = conf.conf_reader("../config/transaction.json")
     # use prod_gr_prefix instead of abfss_prefix
     abfss_prefix = mnt_mapper["prod_gr_prefix"]
     prd_gr_ver = conf_mapper["prd_gr_ver"]
@@ -92,8 +92,8 @@ def main(spark, prjct_nm, test):
     '''
     from . import get_txn_cust
     from .recency import kpi
-    from utils import files
-    mnt_mapper = files.conf_reader("../config/mnt.json")
+    from src.utils import conf
+    mnt_mapper = conf.conf_reader("../config/mnt.json")
     abfss_prefix = mnt_mapper["abfss_prefix"]
     txn_cust = get_txn_cust(spark, prjct_nm, test)
     txn_cust_r360 = txn_cust.where(F.col("date_id").between(
@@ -141,7 +141,7 @@ def main(spark, prjct_nm, test):
     cust_prop_prod_gr_pv.agg(F.count_distinct("household_id")).show()
 
     filename = "cust_prop_prod_gr_pv.parquet" if not test else "cust_prop_prod_gr_pv_test.parquet"
-    files.save(cust_prop_prod_gr_pv, os.path.join(abfss_prefix, prjct_nm, "features",
+    conf.save(cust_prop_prod_gr_pv, os.path.join(abfss_prefix, prjct_nm, "features",
                filename), format="parquet", mode="overwrite", overwriteSchema=True)
     """
     (2) Flag dominant Product group
@@ -173,7 +173,7 @@ def main(spark, prjct_nm, test):
         value="No", subset=["shop_baby", "shop_child", "shop_healthy"])
     cust_prod_flag.show(10)
     filename = "cust_dmnnt_prod_gr_and_flag.parquet" if not test else "cust_dmnnt_prod_gr_and_flag_test.parquet"
-    files.save(cust_prod_flag, os.path.join(abfss_prefix, prjct_nm, "features",
+    conf.save(cust_prod_flag, os.path.join(abfss_prefix, prjct_nm, "features",
                filename), format="parquet", mode="overwrite", overwriteSchema=True)
 
     """
@@ -215,7 +215,7 @@ def main(spark, prjct_nm, test):
 
     cust_prop_sm_pv.show(10)
     filename = "cust_prop_sm_pv.parquet" if not test else "cust_prop_sm_pv_test.parquet"
-    files.save(cust_prop_sm_pv, os.path.join(abfss_prefix, prjct_nm, "features",
+    conf.save(cust_prop_sm_pv, os.path.join(abfss_prefix, prjct_nm, "features",
                filename), format="parquet", mode="overwrite", overwriteSchema=True)
 
     """
@@ -238,5 +238,5 @@ def main(spark, prjct_nm, test):
 
     cust_flag_sm_pv.show(10)
     filename = "cust_flag_sm_pv.parquet" if not test else "cust_flag_sm_pv_test.parquet"
-    files.save(cust_flag_sm_pv, os.path.join(abfss_prefix, prjct_nm, "features",
+    conf.save(cust_flag_sm_pv, os.path.join(abfss_prefix, prjct_nm, "features",
                filename), format="parquet", mode="overwrite", overwriteSchema=True)

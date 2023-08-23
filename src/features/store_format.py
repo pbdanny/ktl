@@ -24,8 +24,8 @@ def main(spark, prjct_nm, test):
 
     from .recency import format_kpi
     from . import get_txn_cust
-    from utils import files
-    mnt_mapper = files.conf_reader("../config/mnt.json")
+    from src.utils import conf
+    mnt_mapper = conf.conf_reader("../config/mnt.json")
     abfss_prefix = mnt_mapper["abfss_prefix"]
     txn_cust = get_txn_cust(spark, prjct_nm, test)
     recencies = ["360_days", "180_days", "90_days", "30_days"]
@@ -43,5 +43,5 @@ def main(spark, prjct_nm, test):
     all_recency = reduce(outer_join_hh, [online, hde, gofresh])
     all_recency = all_recency.fillna(0)
     filename = "all_recency.parquet" if not test else "all_recency_test.parquet"
-    files.save(all_recency, os.path.join(abfss_prefix, prjct_nm, "features", filename
+    conf.save(all_recency, os.path.join(abfss_prefix, prjct_nm, "features", filename
                                          ), format="parquet", mode="overwrite", overwriteSchema=True)

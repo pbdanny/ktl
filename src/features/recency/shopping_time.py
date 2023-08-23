@@ -45,8 +45,8 @@ def shopping_time(spark, prjct_nm, txn_cust_r360, test=False):
     - % Visit by time of day.  
     - % Visist by day of week.  
     """
-    from utils import files
-    mnt_mapper = files.conf_reader("../config/mnt.json")
+    from src.utils import conf
+    mnt_mapper = conf.conf_reader("../config/mnt.json")
     abfss_prefix = mnt_mapper["abfss_prefix"]
     # Total visits
     cust_tt = \
@@ -121,5 +121,5 @@ def shopping_time(spark, prjct_nm, txn_cust_r360, test=False):
          )
 
     filename = "cust_allfmt_r360_shopping_time.parquet" if not test else "cust_allfmt_r360_shopping_time_test.parquet"
-    files.save(pct, os.path.join(abfss_prefix, prjct_nm, "features",
+    conf.save(pct, os.path.join(abfss_prefix, prjct_nm, "features",
                filename), format="parquet", mode="overwrite", overwriteSchema=True)

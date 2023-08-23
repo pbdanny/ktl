@@ -56,11 +56,11 @@ def main(spark, insurer: str, mapper_lead: bool = False):
             spark
             insurer
     '''
-    from utils import files
+    from src.utils import conf
     from etl import staging
-    conf_mapper = files.conf_reader("../config/etl.json")
-    mnt_mapper = files.conf_reader("../config/mnt.json")
-    lead_mapper = files.conf_reader("../config/lead_lot.json")
+    conf_mapper = conf.conf_reader("../config/etl.json")
+    mnt_mapper = conf.conf_reader("../config/mnt.json")
+    lead_mapper = conf.conf_reader("../config/lead_lot.json")
 
     abfss_prefix, dbfs_path = (
         mnt_mapper["abfss_prefix"], mnt_mapper["dbfs_path"])

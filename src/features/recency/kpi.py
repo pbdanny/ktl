@@ -64,8 +64,8 @@ def tender_kpi(spark, prjct_nm, txn_cust_r360, test=False):
     - % visits with cash.
     - % visits with credit card
     '''
-    from utils import files
-    mnt_mapper = files.conf_reader("../config/mnt.json")
+    from src.utils import conf
+    mnt_mapper = conf.conf_reader("../config/mnt.json")
     abfss_prefix = mnt_mapper["abfss_prefix"]
 
     cust_tender_total = \
@@ -100,7 +100,7 @@ def tender_kpi(spark, prjct_nm, txn_cust_r360, test=False):
          )
 
     filename = "cust_allfmt_r360_kpi_by_tender.parquet" if not test else "cust_allfmt_r360_kpi_by_tender_test.parquet"
-    files.save(cust_tender_kpi, os.path.join(abfss_prefix, prjct_nm, "features",
+    conf.save(cust_tender_kpi, os.path.join(abfss_prefix, prjct_nm, "features",
                filename), format="parquet", mode="overwrite", overwriteSchema=True)
 
 
@@ -126,8 +126,8 @@ def all_kpi(spark, prjct_nm, txn_cust_r360, test=False):
         - % Visit by time of day.  
         - % Visist by day of week.
     '''
-    from utils import files
-    mnt_mapper = files.conf_reader("../config/mnt.json")
+    from src.utils import conf
+    mnt_mapper = conf.conf_reader("../config/mnt.json")
     abfss_prefix = mnt_mapper["abfss_prefix"]
     cust_tt_kpi = \
         (txn_cust_r360
@@ -136,7 +136,7 @@ def all_kpi(spark, prjct_nm, txn_cust_r360, test=False):
          )
 
     filename = "cust_allfmt_r360_kpi.parquet" if not test else "cust_allfmt_r360_kpi_test.parquet"
-    files.save(cust_tt_kpi, os.path.join(abfss_prefix, prjct_nm, "features",
+    conf.save(cust_tt_kpi, os.path.join(abfss_prefix, prjct_nm, "features",
                                          filename), format="parquet", mode="overwrite", overwriteSchema=True)
 
 

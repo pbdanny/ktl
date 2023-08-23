@@ -1,3 +1,4 @@
+from src.utils import conf
 from utils.logger import logger
 import os
 import sys
@@ -22,7 +23,7 @@ def rollup_hh_id(spark, abfss_prefix, staging_fdbck_abfss_prefix, test=False):
         :return:S
             fdbck_hh_roll, fdbck_hh_roll (first call date)
     '''
-    from utils import files
+    from src.utils import conf
     storage_fdbck_abfss_prefix = os.path.join(
         abfss_prefix, "feedback", "storage")
     filename = "fdbck_all_hh.parquet" if not test else "fdbck_all_hh_test.parquet"
@@ -35,7 +36,7 @@ def rollup_hh_id(spark, abfss_prefix, staging_fdbck_abfss_prefix, test=False):
                      .select("household_id", "Bought_Status", "Contact_Status", "Reason_code", F.col("First_Call_Date").alias("first_contact_date"))
                      )
     filename = "fdbck_hh_roll.parquet" if not test else "fdbck_hh_roll_test.parquet"
-    files.save(fdbck_hh_roll, os.path.join(
+    conf.save(fdbck_hh_roll, os.path.join(
         storage_fdbck_abfss_prefix, filename), format="parquet", mode="overwrite")
     return fdbck_hh_roll
 
@@ -50,10 +51,10 @@ def main(spark, sqlContext,  date_end, test=False):
             test, test
 
     '''
-    from utils import files, etl
+    from utils import etl
     from features import recency, exclusion
-    conf_mapper = files.conf_reader("../config/etl.json")
-    mnt_mapper = files.conf_reader("../config/mnt.json")
+    conf_mapper = conf.conf_reader("../config/etl.json")
+    mnt_mapper = conf.conf_reader("../config/mnt.json")
     abfss_prefix, dbfs_path = (
         mnt_mapper["abfss_prefix"], Path(mnt_mapper["dbfs_path"]))
 
@@ -84,7 +85,7 @@ def main(spark, sqlContext,  date_end, test=False):
     fdbck_all = fdbck_all.where(F.col("First_Call_Date").isNotNull())
     cust_fdbck_hh = etl.ngc_to_household(spark, fdbck_all)
     filename = "fdbck_all_hh.parquet" if not test else "fdbck_all_hh_test.parquet"
-    files.save(cust_fdbck_hh, os.path.join(staging_fdbck_abfss_prefix,
+    conf.save(cust_fdbck_hh, os.path.join(staging_fdbck_abfss_prefix,
                filename), format="parquet", mode="overwrite")
     fdbck_hh_roll = rollup_hh_id(
         spark, abfss_prefix, staging_fdbck_abfss_prefix, test=test)

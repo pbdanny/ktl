@@ -12,8 +12,8 @@ sys.path.append('../')
 @logger
 def get_txn_cc_exc_trdr(spark, conf_path):
     
-    from src.utils import files
-    conf_mapper = files.conf_reader(conf_path)
+    from src.utils import conf
+    conf_mapper = conf.conf_reader(conf_path)
     
     start_week = conf_mapper["data"]["start_week"]
     end_week = conf_mapper["data"]["end_week"]
@@ -46,8 +46,8 @@ def get_txn_cc_exc_trdr(spark, conf_path):
 
 @logger
 def map_txn_time(spark, conf_path, txn):
-    from src.utils import files
-    conf_mapper = files.conf_reader(conf_path)
+    from src.utils import conf
+    conf_mapper = conf.conf_reader(conf_path)
 
     scope_date_dim = (spark
                 .table('tdm.v_date_dim')
@@ -105,7 +105,7 @@ def map_txn_time(spark, conf_path, txn):
                                                         .otherwise('NONE'))
     
     conf_mapper["xmaxs_week_id"] = xmas_week_id
-    files.conf_writer(conf_mapper, conf_path)
+    conf.conf_writer(conf_mapper, conf_path)
 
     # Last week of month (Payweey)
     last_sat = scope_date_dim.filter(F.col('weekday_nbr') == 6).groupBy('month_id').agg(F.max('day_in_month_nbr').alias('day_in_month_nbr'))\

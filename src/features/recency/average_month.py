@@ -22,8 +22,8 @@ def average_month(spark, prjct_nm, txn_cust_r360, test=False):
     - Ever have online transaction.  
     - Avg monthly sales.  
     """
-    from utils import files
-    mnt_mapper = files.conf_reader("../config/mnt.json")
+    from src.utils import conf
+    mnt_mapper = conf.conf_reader("../config/mnt.json")
     abfss_prefix = mnt_mapper["abfss_prefix"]
 
     date_period = spark.table("tdm.v_date_dim").select(
@@ -42,5 +42,5 @@ def average_month(spark, prjct_nm, txn_cust_r360, test=False):
          .withColumn("ever_online", F.when(F.col("sales_online") > 0, F.lit("Y")).otherwise(F.lit("N")))
          )
     filename = "cust_allfmt_r360_promo_online_avg_mth_sales.parquet" if not test else "cust_allfmt_r360_promo_online_avg_mth_sales_test.parquet"
-    files.save(cust_promo_online_monthly, os.path.join(abfss_prefix, prjct_nm, "features",
+    conf.save(cust_promo_online_monthly, os.path.join(abfss_prefix, prjct_nm, "features",
                filename), format="parquet", mode="overwrite", overwriteSchema=True)

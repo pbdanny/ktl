@@ -35,7 +35,7 @@ def feedback(spark, insurer, abfss_prefix, dbfs_path, prjct_nm, stage, conf_mapp
 
 
 if __name__ == "__main__":
-    from utils import files
+    from src.utils import conf
     spark = SparkSession.builder.appName("lmp").getOrCreate()
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--insurer", choices=["AZAY", "CIGNA"], help='''set insurer name 
@@ -48,8 +48,8 @@ if __name__ == "__main__":
         "-f", "--feedback", default="1", choices=["1", "2", "3"], help="feedback type e.g., 202208")
 
     args = parser.parse_args()
-    conf_mapper = files.conf_reader("../config/etl.json")
-    mnt_mapper = files.conf_reader("../config/mnt.json")
+    conf_mapper = conf.conf_reader("../config/etl.json")
+    mnt_mapper = conf.conf_reader("../config/mnt.json")
     abfss_prefix, dbfs_path = (
         mnt_mapper["abfss_prefix"], Path(mnt_mapper["dbfs_path"]))
     prjct_nm = "feedback"

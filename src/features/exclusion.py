@@ -2,6 +2,7 @@ from pyspark.sql import functions as F
 from pathlib import Path
 import os
 import sys
+from src.utils import conf
 sys.path.append('../')
 
 from utils.logger import logger
@@ -71,7 +72,7 @@ def trader(spark, df, save=True, test=False):
         :param: 
             df, dataframe from cust_reg_10yr (old_account)
     '''
-    from utils import files
+    from src.utils import conf
     trader = spark.table("tdm_seg.trader_subseg_party2_master").select(
         "household_id", "mapping_quarter_id").withColumnRenamed("mapping_quarter_id", "quarter_id")
 
@@ -79,7 +80,7 @@ def trader(spark, df, save=True, test=False):
         trader, ["household_id", "quarter_id"], "leftanti")
 
     if save:
-        mnt_mapper = files.conf_reader("../config/mnt.json")
+        mnt_mapper = conf.conf_reader("../config/mnt.json")
         abfss_prefix, dbfs_path = (
             mnt_mapper["abfss_prefix"], Path(mnt_mapper["dbfs_path"]))
         storage_fdbck_abfss_prefix = os.path.join(
@@ -88,7 +89,7 @@ def trader(spark, df, save=True, test=False):
         print(f">>> filename: {filename}")
         save_path = os.path.join(
             storage_fdbck_abfss_prefix, filename)
-        files.save(cust_detail_ex_trdr, save_path, "parquet",
+        conf.save(cust_detail_ex_trdr, save_path, "parquet",
                    "overwrite", overwriteSchema=True)
     return cust_detail_ex_trdr
 
@@ -99,7 +100,7 @@ def cust_detail_seg(spark, df, save=True, test=False):
         :param:
             df, dataframe from trader (trader) cust_detail_ex_trdr
     '''
-    from utils import segmentation, files
+    from utils import segmentation
     truprice = segmentation.truprice(spark)
     facts = segmentation.facts(spark)
     lifestage = segmentation.lifestage(spark)
@@ -125,7 +126,7 @@ def cust_detail_seg(spark, df, save=True, test=False):
     cust_detail_seg_all = cust_detail_seg.join(lifecycle, on=["household_id", "week_id"], how="left").fillna(
         value="Unclassified", subset=["lifecycle_name"])
     if save:
-        mnt_mapper = files.conf_reader("../config/mnt.json")
+        mnt_mapper = conf.conf_reader("../config/mnt.json")
         abfss_prefix, dbfs_path = (
             mnt_mapper["abfss_prefix"], Path(mnt_mapper["dbfs_path"]))
         storage_fdbck_abfss_prefix = os.path.join(
@@ -134,5 +135,5 @@ def cust_detail_seg(spark, df, save=True, test=False):
         print(f">>> filename: {filename}")
         save_path = os.path.join(
             storage_fdbck_abfss_prefix, filename)
-        files.save(cust_detail_seg_all, save_path, "parquet",
+        conf.save(cust_detail_seg_all, save_path, "parquet",
                    "overwrite", overwriteSchema=True)

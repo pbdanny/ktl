@@ -69,4 +69,28 @@ files.conf_writer(conf_mapper, conf_path)
 
 # COMMAND ----------
 
+from src.utils import files
+
+conf_path = "../config/snap_txn.json"
+
+conf_mapper = files.conf_reader("../config/snap_txn.json")
+
+# COMMAND ----------
+
+from src.etl import snap_txn
+
+# COMMAND ----------
+
+cc_txn = snap_txn.get_txn_cc_exc_trdr(spark, conf_path)
+
+# COMMAND ----------
+
+cc_txn_map_time = snap_txn.map_txn_time(spark, conf_path, cc_txn)
+
+# COMMAND ----------
+
+type(cc_txn_map_time)
+
+# COMMAND ----------
+
 

@@ -7,7 +7,7 @@
         "start_week": 202227, 
         "end_week": 202327
     },
-    "features" {
+    "features" : {
         "xmaxs_week_id": [202251, 202252, 202301]
     }
 }

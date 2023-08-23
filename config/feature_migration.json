@@ -1,0 +1,13 @@
+{
+    "data" : {
+        "decision_date": "2023-08-13",
+        "gap_decision_n_month": 1,
+        "timeframe_end": "2023-06-30", 
+        "timeframe_start": "2022-07-01", 
+        "start_week": 202227, 
+        "end_week": 202327
+    },
+    "features" {
+        "xmaxs_week_id": [202251, 202252, 202301]
+    }
+}

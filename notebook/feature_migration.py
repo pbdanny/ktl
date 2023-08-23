@@ -25,11 +25,13 @@ spark = SparkSession.builder.appName("lmp").getOrCreate()
 # DBTITLE 1,Load Config
 from src.utils import files
 
-conf_path = "../config/snap_txn.json"
+conf_path = "../config/feaure_migration.json"
 
-conf_mapper = files.conf_reader("../config/snap_txn.json")
-decision_date = conf_mapper["decision_date"]
-print(f"{decision_date}")
+conf_mapper = files.conf_reader(conf_path)
+
+decision_date = conf_mapper["data"]["decision_date"]
+gap_decision_n_month = conf_mapper["data"]["gap_decision_n_month"]
+print(f"{decision_date} , with gap months from decision date to data end date {gap_decision_n_month}")
 
 # COMMAND ----------
 
@@ -42,7 +44,7 @@ decision_date =  datetime.strptime(conf_mapper["decision_date"], '%Y-%m-%d').dat
 
 # timeframe_end = 1 month back from decision date
 # timeframe_start = 1 year from timeframe_end
-timeframe_end = date(decision_date.year, decision_date.month - 1, 1) - timedelta(days=1)
+timeframe_end = date(decision_date.year, decision_date.month - gap_decision_n_month, 1) - timedelta(days=1)
 timeframe_start = (timeframe_end - relativedelta(months=11)).replace(day=1)
 
 print(f"decision date : {decision_date}\ntxn start date : {timeframe_start}\ntxn end date : {timeframe_end}")
@@ -77,7 +79,7 @@ conf_mapper = files.conf_reader("../config/snap_txn.json")
 
 # COMMAND ----------
 
-from src.etl import snap_txn
+from src.data import snap_txn
 
 # COMMAND ----------
 

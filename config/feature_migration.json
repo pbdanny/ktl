@@ -1,4 +1,9 @@
 {
+    "storage": {
+        "dbfs":"",
+        "abfss":"",
+        "hive":"tdm_seg.th_lotuss_thanakrit_ktl_",
+    },
     "data": {
         "decision_date": "2023-08-13",
         "gap_decision_n_month": 1,

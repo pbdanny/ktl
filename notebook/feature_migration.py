@@ -38,7 +38,7 @@ print(f"{decision_date} , with gap months from decision date to data end date {g
 # decision date = latest data end date
 decision_date =  datetime.strptime(decision_date, '%Y-%m-%d').date()
 
-# timeframe_end = end of -2 months from decision date
+# timeframe_end = end of months-2 from decision date
 # timeframe_start = 1 year from timeframe_end
 timeframe_end = decision_date - relativedelta(months=+float(gap_decision_n_month)) - relativedelta(days=+1)
 timeframe_start = (timeframe_end - relativedelta(months=+11)).replace(day=1)
@@ -67,28 +67,10 @@ files.conf_writer(conf_mapper, conf_path)
 
 # COMMAND ----------
 
-from src.utils import files
-
-conf_path = "../config/snap_txn.json"
-
-conf_mapper = files.conf_reader("../config/snap_txn.json")
-
-# COMMAND ----------
-
 from src.data import snap_txn
 
-# COMMAND ----------
-
 cc_txn = snap_txn.get_txn_cc_exc_trdr(spark, conf_path)
-
-# COMMAND ----------
-
 cc_txn_map_time = snap_txn.map_txn_time(spark, conf_path, cc_txn)
-
-# COMMAND ----------
-
 type(cc_txn_map_time)
 
 # COMMAND ----------
-
-

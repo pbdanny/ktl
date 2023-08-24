@@ -315,3 +315,94 @@ def map_txn_cust_issue_first_txn(spark, conf_mapper, txn):
         .withColumn('one_year_history',F.when(F.col('first_tran_datetime') <=F.col('date_id'), 1).otherwise(0))
         )
     return flag_df
+
+@logger
+def map_txn_promo(spark, conf_mapper, txn):
+    """
+    """
+    decision_date = conf_mapper["data"]["decision_date"]
+    start_week = conf_mapper["data"]["start_week"]
+    end_week = conf_mapper["data"]["end_week"]
+    timeframe_start = conf_mapper["data"]["timeframe_start"]
+    timeframe_end = conf_mapper["data"]["timeframe_end"]
+
+    scope_date_dim = (spark
+                .table('tdm.v_date_dim')
+                .select(['date_id','period_id','quarter_id','year_id','month_id','weekday_nbr','week_id',
+                        'day_in_month_nbr','day_in_year_nbr','day_num_sequence','week_num_sequence'])
+                .where(F.col("week_id").between(start_week, end_week))
+                .where(F.col("date_id").between(timeframe_start, timeframe_end))
+                        .dropDuplicates()
+                )
+    start_promoweek = scope_date_dim.filter(F.col('date_id').between(timeframe_start, timeframe_end)).agg(F.min('promoweek_id')).collect()[0][0]
+    end_promoweek = scope_date_dim.filter(F.col('date_id').between(timeframe_start, timeframe_end)).agg(F.max('promoweek_id')).collect()[0][0]
+    
+    df_date_filtered = scope_date_dim.filter(F.col('promoweek_id').between(start_promoweek, end_promoweek))
+
+    df_promo = spark.table('tdm.v_th_rpm_promo').filter(F.col('active_flag') == 'Y')\
+                                                        .filter((F.col('change_type').isNotNull()))
+
+    df_promozone = spark.table('tdm.v_th_promo_zone')
+
+
+    df_prod = spark.table('tdm.v_prod_dim_c').filter(F.col('division_id').isin([1,2,3,4,9,10,13]))\
+                                                    .filter(F.col('country') == "th")
+
+    df_trans_item = spark.table('tdm.v_transaction_item').filter(F.col('week_id').between(start_week, end_week))\
+                                                        .filter(F.col('date_id').between(timeframe_start,timeframe_end))\
+                                                        .filter(F.col('country') == "th")\
+                                                        .where((F.col('net_spend_amt')>0)&(F.col('product_qty')>0)&(F.col('date_id').isNotNull()))\
+                                                        .filter(F.col('cc_flag') == 'cc')\
+                                                        .dropDuplicates()
+
+    df_store = spark.table('tdm.v_store_dim_c').filter(F.col('format_id').isin([1,2,3,4,5]))\
+                                                    .filter(F.col('country') == "th")\
+                                                    .withColumn('format_name',F.when(F.col('format_id').isin([1,2,3]), 'Hypermarket')\
+                                                                                .when(F.col('format_id') == 4, 'Supermarket')\
+                                                                                .when(F.col('format_id') == 5, 'Mini Supermarket')\
+                                                                                .otherwise(F.col('format_id')))\
+                                                                                .dropDuplicates()
+                                                                                
+    # Join tables into main table
+
+    df_promo_join = df_promo.select('promo_id', 'promo_offer_id', 'change_type', 'promo_start_date', 'promo_end_date', 
+                                    'promo_storegroup_id', 'upc_id', 'source').drop_duplicates()
+
+    df_promozone_join = df_promozone.select('zone_id', 'location') \
+                                    .withColumnRenamed('zone_id', 'promo_storegroup_id') \
+                                    .withColumnRenamed('location', 'store_id').drop_duplicates()
+
+    df_date_join = df_date_filtered.select('promoweek_id', 'date_id')
+
+    # "Explode" Promo table with one row per each date in each Promo ID & UPC ID combination
+    # can join on date_id now
+    df_promo_exploded = df_promo_join.join(df_date_join, 
+                                        on=((df_promo_join['promo_start_date'] <= df_date_join['date_id']) &
+                                            (df_promo_join['promo_end_date'] >= df_date_join['date_id'])),
+                                        how='inner')
+
+    df_store_join = df_store.withColumn('store_format_name',F.when(F.col('format_id') == 5, 'GOFRESH') \
+                                                                    .when(F.col('format_id') == 4, 'TALAD')
+                                                                    .when(F.col('format_id').isin([1, 2, 3]), 'HDE')) \
+                            .select('store_id', 'store_format_name').drop_duplicates()
+
+    # Explode the table further so each store ID is joined to each Promo ID & UPC ID & date combination
+    # Filter only for store formats 1-5
+    df_promo_with_stores = df_promo_exploded.join(df_promozone_join, on='promo_storegroup_id', how='left') \
+                                            .join(df_store_join, on='store_id', how='inner')                                                                                
+    # get txn from flag_df that appears in promo but only keep rows from flag_df 
+    promo_df = txn.join(df_promo_with_stores, on=['date_id','upc_id','store_id'], how='leftsemi')
+
+    non_promo_df = txn.join(promo_df, on=['household_id', 'transaction_uid', 'store_id', 'date_id', 'upc_id'], how='leftanti')                                            
+    
+    # Flag promo / markdown
+    promo_df = promo_df.withColumn('discount_reason_code',F.lit('P'))\
+                    .withColumn('promo_flag',F.lit('PROMO'))
+
+    non_promo_df = non_promo_df.withColumn('discount_reason_code',F.when((F.col('discount_amt') > 0), 'M')\
+                                                                .otherwise('NONE'))\
+                            .withColumn('promo_flag',F.when(F.col('discount_reason_code') == 'M', 'MARK_DOWN')\
+                                                        .otherwise(F.col('discount_reason_code')))
+                            
+    promo_df = promo_df.unionByName(non_promo_df)
+    return promo_df

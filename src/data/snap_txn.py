@@ -49,12 +49,15 @@ def map_txn_time(spark, conf_path, txn):
     from src.utils import conf
     conf_mapper = conf.conf_reader(conf_path)
 
+    start_wek = conf_mapper["data"]["start_week"]
+    end_week = conf_mapper["data"]["end_week"]
+
     scope_date_dim = (spark
                 .table('tdm.v_date_dim')
                 .select(['date_id','period_id','quarter_id','year_id','month_id','weekday_nbr','week_id',
                         'day_in_month_nbr','day_in_year_nbr','day_num_sequence','week_num_sequence'])
-                .where(F.col("week_id").between(conf_mapper["start_week"], conf_mapper["end_week"]))
-                .where(F.col("date_id").between(conf_mapper["timeframe_start"], conf_mapper["timeframe_end"]))
+                .where(F.col("week_id").between(conf_mapper["data"]["start_week"], conf_mapper["data"]["end_week"]))
+                .where(F.col("date_id").between(conf_mapper["data"]["timeframe_start"], conf_mapper["timeframe_end"]))
                         .dropDuplicates()
                 )
 

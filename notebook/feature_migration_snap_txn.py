@@ -1,7 +1,6 @@
 # Databricks notebook source
 import sys
 import os
-import logging
 from pathlib import Path
 
 import time
@@ -20,12 +19,6 @@ from pyspark.sql import Window
 from pyspark.sql import SparkSession
 
 spark = SparkSession.builder.appName("lmp").getOrCreate()
-
-# COMMAND ----------
-logging.basicConfig(filename='logs.log',
-            filemode='w',
-            level=logging.INFO)
-
 
 # COMMAND ----------
 
@@ -86,18 +79,26 @@ cc_txn = snap_txn.get_txn_cc_exc_trdr(spark, conf_path)
 
 # COMMAND ----------
 
-conf_mapper["storage"]["hive"]["prefix"]
+from src.utils.storage import save_hive
 
 # COMMAND ----------
 
-(cc_txn
- .sample(0.001)
- .write
- .mode("overwrite")
- .saveAsTable(conf_mapper["storage"]["hive"]["prefix"] + "snap_txn")
-)
+save_hive(conf_mapper, cc_txn.sample(0.001), "snap_txn")
 
 # COMMAND ----------
 
-conf_mapper["storage"]["hive"]["snap_txn"] = conf_mapper["storage"]["hive"]["prefix"] + "snap_txn"
-conf.conf_writer(conf_mapper, conf_path)
+# MAGIC %md ##Stamp date, time
+
+# COMMAND ----------
+
+txn = spark.table(conf_mapper["storage"]["hive"]["prefix"] + "snap_txn")
+
+# COMMAND ----------
+
+from src.data import snap_txn
+
+map_time = snap_txn.map_txn_time(spark, conf_mapper, txn)
+
+# COMMAND ----------
+
+

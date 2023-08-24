@@ -152,3 +152,166 @@ def map_txn_time(spark, conf_mapper, txn):
                                         .otherwise('NA'))
 
     return r
+
+@logger
+def map_txn_prod_premium(spark, conf_mapper, txn):
+    """
+    """
+    # Premium / Budget Flag
+    product_df = (spark.table('tdm.v_prod_dim_c')
+                .select(['upc_id','brand_name','division_id','division_name','department_id','department_name','department_code','section_id','section_name','section_code','class_id','class_name','class_code','subclass_id','subclass_name','subclass_code'])
+                .filter(F.col('division_id').isin([1,2,3,4,9,10,13]))
+                .filter(F.col('country').isin("th"))
+    )
+
+    temp_prod_df = product_df.select('upc_id', 'subclass_code', 'subclass_name')
+
+    premium_prod_df = (temp_prod_df
+                    .filter(F.col('subclass_name').ilike('%PREMIUM%'))
+                    .filter(~F.col('subclass_name').ilike('%COUPON%'))
+                    .withColumn('price_level',F.lit('PREMIUM'))
+                    ).distinct()
+
+    budget_prod_df = (temp_prod_df
+                    .filter(F.col('subclass_name').rlike('(?i)(budget|basic|value)'))
+                    .withColumn('price_level',F.lit('BUDGET'))
+                    ).distinct()
+
+    price_level_df = premium_prod_df.unionByName(budget_prod_df)
+
+    flagged_df = txn.join(price_level_df.select('upc_id','price_level'), on='upc_id', how='left')\
+                    .fillna('NONE', subset=['price_level'])\
+                    .dropna(subset=['household_id'])
+    
+    return flagged_df
+
+@logger
+def map_txn_tender(spark, conf_mapper, txn):
+    """
+    """
+
+    timeframe_start = conf_mapper["data"]["timeframe_start"]
+    timeframe_end = conf_mapper["data"]["timeframe_end"]
+    
+    # RESA tender
+    resa_tender = spark.table("tdm.v_resa_group_resa_tran_tender")
+    resa_tender = (
+        resa_tender.withColumn("tender_type_group", F.trim(F.col("tender_type_group")))
+        .withColumn(
+            "set_tndr_type",
+            F.array_distinct(
+                F.collect_list(F.col("tender_type_group")).over(
+                    Window.partitionBy(["tran_seq_no", "store", "day"])
+                )
+            ),
+        )
+        # .withColumn("set_tndr_type", F.collect_set(F.col("tender_type_group")).over(Window.partitionBy("tran_seq_no")))
+        .withColumn("n_tndr_type", F.size(F.col("set_tndr_type")))
+        .select(
+            "tran_seq_no", "store", "day", "dp_data_dt", "n_tndr_type", "tender_type_group"
+        )
+        .withColumn(
+            "sngl_tndr_type",
+        F.when(F.col("n_tndr_type") == 1,F.col("tender_type_group")).otherwise(
+            F.lit("MULTI")
+            ),
+        )
+        # Adjust to support new unique txn_uid from surrogate key
+        .withColumnRenamed("tran_seq_no", "transaction_uid_orig")
+        .withColumnRenamed("store", "store_id")
+        .withColumnRenamed("dp_data_dt", "date_id")
+        .select("transaction_uid_orig", "store_id", "day", "date_id", "sngl_tndr_type")
+        .drop_duplicates()
+    )
+
+    # OSM (Online) Tender
+    oms_tender = spark.table("tdm_seg.v_oms_group_payment").filter(F.col("Country") == "th")
+
+    oms_tender = (
+        oms_tender.withColumn("PaymentMethod", F.trim(F.col("PaymentMethod")))
+        .withColumn(
+            "set_tndr_type",
+            F.array_distinct(
+                F.collect_list(F.col("PaymentMethod")).over(
+                    Window.partitionBy(["transaction_uid"])
+                )
+            ),
+        )
+        # .withColumn("set_tndr_type", F.collect_set(F.col("tender_type_group")).over(Window.partitionBy("tran_seq_no")))
+        .withColumn("n_tndr_type", F.size(F.col("set_tndr_type")))
+        .select(
+            "transaction_uid", "dp_data_dt", "n_tndr_type", "PaymentMethod"
+        )
+        .withColumn(
+            "sngl_tndr_type",
+        F.when(F.col("n_tndr_type") == 1,F.col("PaymentMethod")).otherwise(
+            F.lit("MULTI")
+            ),
+        )
+        # Adjust to support new unique txn_uid from surrogate key
+        .withColumnRenamed("transaction_uid", "transaction_uid_orig")
+        .select("transaction_uid_orig", "sngl_tndr_type")
+        .drop_duplicates()
+    )
+
+    resa_tender = resa_tender.withColumn("oms",F.lit(False))
+    oms_tender = oms_tender.withColumn("oms",F.lit(True))
+
+    filter_resa_tender = resa_tender.filter(F.col('date_id').between(timeframe_start, timeframe_end))
+
+    filter_resa_tender = filter_resa_tender.withColumnRenamed('transaction_uid_orig', 'transaction_uid')\
+                                        .withColumnRenamed('sngl_tndr_type', 'resa_payment_method')\
+                                        .dropDuplicates()
+
+    filter_oms_tender = oms_tender.withColumnRenamed('sngl_tndr_type', 'oms_payment_method')\
+                                .withColumnRenamed('transaction_uid_orig', 'transaction_uid')\
+                                .dropDuplicates()
+
+    # Add transaction type to txn
+    flag_df = txn.join(filter_resa_tender.select('transaction_uid','store_id','date_id','resa_payment_method'), 
+                                        on=['transaction_uid', 'store_id', 'date_id'], how='left')\
+                                .join(filter_oms_tender.select('transaction_uid','oms_payment_method'), on='transaction_uid', how='left')
+
+    flag_df = (flag_df
+            .withColumn('resa_payment_method',
+                        F.when(F.col('resa_payment_method').isNull(), F.lit('Unidentified'))
+                            .otherwise(F.col('resa_payment_method')))
+            .withColumn('payment_flag',
+                        F.when((F.col('resa_payment_method') == 'CASH') | (F.col('oms_payment_method') == 'CASH'), 'CASH')
+                            .when((F.col('resa_payment_method') == 'CCARD') | (F.col('oms_payment_method') == 'CreditCard'), 'CARD')
+                                .when((F.col('resa_payment_method') == 'COUPON'), 'COUPON')
+                                .when((F.col('resa_payment_method') == 'VOUCH'), 'VOUCHER')
+                                .otherwise('OTHER'))
+    )
+    
+    return flag_df
+
+@logger
+def map_txn_cust_issue_first_txn(spark, conf_mapper, txn):
+    """
+    """
+    #--- get card_issue_date for nulls (use first transaction instead)
+
+    max_card_issue = (spark
+                    .table('tdm.v_customer_dim')
+                    .groupBy("household_id", "golden_record_external_id_hash")
+                    .agg(F.max("card_issue_date").alias("card_issue_date"))
+                    .drop_duplicates()
+    )
+
+    first_tran = (spark.table('tdm_seg.mylotuss_customer_1st_txn_V1')
+                .select('golden_record_external_id_hash', 'tran_datetime')
+                .withColumnRenamed('tran_datetime', 'first_tran_datetime')
+                )
+                
+    flag_df = (
+        txn
+        .join(max_card_issue, on='household_id', how='left')
+        .join(first_tran, on='golden_record_external_id_hash', how='left')
+        .withColumn('card_issue_date',
+                    F.when(F.col('card_issue_date').isNull(),
+                        F.col('first_tran_datetime')).otherwise(F.col('card_issue_date')))
+        .withColumn('CC_TENURE', F.round((F.datediff(F.col('end_date'),F.col('card_issue_date'))) / 365,1))
+        .withColumn('one_year_history',F.when(F.col('first_tran_datetime') <=F.col('date_id'), 1).otherwise(0))
+        )
+    return flag_df

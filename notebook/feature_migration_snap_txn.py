@@ -1,6 +1,7 @@
 # Databricks notebook source
 import sys
 import os
+import logging
 from pathlib import Path
 
 import time
@@ -19,6 +20,12 @@ from pyspark.sql import Window
 from pyspark.sql import SparkSession
 
 spark = SparkSession.builder.appName("lmp").getOrCreate()
+
+# COMMAND ----------
+logging.basicConfig(filename='logs.log',
+            filemode='w',
+            level=logging.INFO)
+
 
 # COMMAND ----------
 

@@ -1,5 +1,5 @@
 from functools import wraps
-
+from .conf import conf_reader
 
 def logger(fn):
     '''

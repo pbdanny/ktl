@@ -10,11 +10,8 @@ import sys
 sys.path.append('../')
 
 @logger
-def get_txn_cc_exc_trdr(spark, conf_path):
-    
-    from src.utils import conf
-    conf_mapper = conf.conf_reader(conf_path)
-    
+def get_txn_cc_exc_trdr(spark, conf_mapper):
+        
     start_week = conf_mapper["data"]["start_week"]
     end_week = conf_mapper["data"]["end_week"]
     timeframe_start = conf_mapper["data"]["timeframe_start"]
@@ -45,25 +42,26 @@ def get_txn_cc_exc_trdr(spark, conf_path):
     return data_df
 
 @logger
-def map_txn_time(spark, conf_path, txn):
-    from src.utils import conf
-    conf_mapper = conf.conf_reader(conf_path)
-
-    start_wek = conf_mapper["data"]["start_week"]
+def map_txn_time(spark, conf_mapper, txn):
+    
+    decision_date = conf_mapper["data"]["decision_date"]
+    start_week = conf_mapper["data"]["start_week"]
     end_week = conf_mapper["data"]["end_week"]
+    timeframe_start = conf_mapper["data"]["timeframe_start"]
+    timeframe_end = conf_mapper["data"]["timeframe_end"]
 
     scope_date_dim = (spark
                 .table('tdm.v_date_dim')
                 .select(['date_id','period_id','quarter_id','year_id','month_id','weekday_nbr','week_id',
                         'day_in_month_nbr','day_in_year_nbr','day_num_sequence','week_num_sequence'])
-                .where(F.col("week_id").between(conf_mapper["data"]["start_week"], conf_mapper["data"]["end_week"]))
-                .where(F.col("date_id").between(conf_mapper["data"]["timeframe_start"], conf_mapper["timeframe_end"]))
+                .where(F.col("week_id").between(start_week, end_week))
+                .where(F.col("date_id").between(timeframe_start, timeframe_end))
                         .dropDuplicates()
                 )
 
     time_of_day_df = (txn
                     .join(scope_date_dim.drop("week_id"), "date_id", "inner")
-                    .withColumn('decision_date', F.lit(conf_mapper["decision_date"]))
+                    .withColumn('decision_date', F.lit(decision_date))
                     .withColumn('tran_hour', F.hour(F.col('tran_datetime')))
     )
 
@@ -85,7 +83,7 @@ def map_txn_time(spark, conf_path, txn):
                                 F.when(F.col('weekday_nbr').isin(6,7), F.lit('Y'))
                                 .when((F.col('weekday_nbr') == 5) & (F.col('time_of_day').isin('evening', 'late')), 'Y')
                                 .otherwise('N'))
-    )
+    )    
     # festive week : Songkran, NewYear
     max_week_december = (scope_date_dim
                             .filter((F.col("month_id") % 100) == 12)
@@ -107,10 +105,9 @@ def map_txn_time(spark, conf_path, txn):
                                                         .when(F.col('month_id').cast('string').endswith('04'), 'APRIL')\
                                                         .otherwise('NONE'))
     
-    conf_mapper["xmaxs_week_id"] = xmas_week_id
-    conf.conf_writer(conf_mapper, conf_path)
 
-    # Last week of month (Payweey)
+
+    # Last week of month (Payweek)
     last_sat = scope_date_dim.filter(F.col('weekday_nbr') == 6).groupBy('month_id').agg(F.max('day_in_month_nbr').alias('day_in_month_nbr'))\
                                                     .withColumn('last_weekend_flag',F.lit('Y'))
 
@@ -129,8 +126,8 @@ def map_txn_time(spark, conf_path, txn):
     )
 
     # Recency Flag
-    r = flagged_df.withColumn('end_date',F.lit(conf_mapper["timeframe_end"]))\
-            .withColumn('start_date',F.lit(conf_mapper["timeframe_start"]))\
+    r = flagged_df.withColumn('end_date',F.lit(timeframe_end))\
+            .withColumn('start_date',F.lit(timeframe_start))\
             .withColumn('start_month_date', F.trunc(F.col('date_id'), 'month'))\
             .withColumn('end_month_date', F.last_day(F.col('start_month_date')))\
             .withColumn('months_from_end_date', F.months_between(F.col('end_date'),F.col('end_month_date')) + 1)\

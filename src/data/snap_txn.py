@@ -326,14 +326,8 @@ def map_txn_promo(spark, conf_mapper, txn):
     timeframe_start = conf_mapper["data"]["timeframe_start"]
     timeframe_end = conf_mapper["data"]["timeframe_end"]
 
-    scope_date_dim = (spark
-                .table('tdm.v_date_dim')
-                .select(['date_id','period_id','quarter_id','year_id','month_id','weekday_nbr','week_id',
-                        'day_in_month_nbr','day_in_year_nbr','day_num_sequence','week_num_sequence'])
-                .where(F.col("week_id").between(start_week, end_week))
-                .where(F.col("date_id").between(timeframe_start, timeframe_end))
-                        .dropDuplicates()
-                )
+    scope_date_dim = spark.table('tdm.v_date_dim').select('week_id', 'date_id', 'period_id', 'quarter_id', 'promoweek_id')
+
     start_promoweek = scope_date_dim.filter(F.col('date_id').between(timeframe_start, timeframe_end)).agg(F.min('promoweek_id')).collect()[0][0]
     end_promoweek = scope_date_dim.filter(F.col('date_id').between(timeframe_start, timeframe_end)).agg(F.max('promoweek_id')).collect()[0][0]
     

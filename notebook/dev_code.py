@@ -22,7 +22,6 @@ spark = SparkSession.builder.appName("lmp").getOrCreate()
 
 # COMMAND ----------
 
-# DBTITLE 1,Load Config
 from src.utils import conf
 
 conf_path = "../config/feature_migration.json"
@@ -31,23 +30,36 @@ conf_mapper = conf.conf_reader(conf_path)
 
 # COMMAND ----------
 
-from pprint import pprint
-pprint(conf_mapper)
+# DBTITLE 1,Load Config
+decision_date = conf_mapper["data"]["decision_date"]
+start_week = conf_mapper["data"]["start_week"]
+end_week = conf_mapper["data"]["end_week"]
+timeframe_start = conf_mapper["data"]["timeframe_start"]
+timeframe_end = conf_mapper["data"]["timeframe_end"]
+
+scope_date_dim = (spark
+            .table('tdm.v_date_dim')
+            .select(['date_id','period_id','quarter_id','year_id','month_id','weekday_nbr','week_id',
+                    'day_in_month_nbr','day_in_year_nbr','day_num_sequence','week_num_sequence'])
+            .where(F.col("week_id").between(start_week, end_week))
+            .where(F.col("date_id").between(timeframe_start, timeframe_end))
+                    .dropDuplicates()
+            )
+
+
+            
 
 # COMMAND ----------
 
-# DBTITLE 1,Total Spend Unit Visit
-snap_txn = spark.table(conf_mapper["storage"]["hive"]["snap_txn"])
-total_kpi_tbl_nm = conf_mapper["storage"]["hive"]["prefix"] + "total_kpi"
-total_df = snap_txn.groupBy('household_id')\
-                       .agg(F.sum('net_spend_amt').alias('Total_Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Total_Visits'), \
-                        F.sum('unit').alias('Total_Units'))
-total_df.write.mode("overwrite").saveAsTable("total_kpi_tbl_nm")
-conf_mapper["storate"]["hive"]["total_kpi"] = total_kpi_tbl_nm
-conf.conf_writer(conf_mapper, conf_path)
+max_week_december = (scope_date_dim
+                        .where((F.col("month_id") % 100) == 12)
+                        .filter(F.col("week_id").startswith(F.col("month_id").substr(1, 4))) 
+                        .agg(F.max(F.col("week_id")).alias("max_week_december")).collect()[0]["max_week_december"]
+    )
 
 # COMMAND ----------
+
+
 
 # COMMAND ----------
 
@@ -112,4 +124,5 @@ pivoted_div_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year
 
 
 # COMMAND ----------
+
 

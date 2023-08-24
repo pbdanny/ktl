@@ -83,21 +83,59 @@ from src.utils.storage import save_hive
 
 # COMMAND ----------
 
-save_hive(conf_mapper, cc_txn.sample(0.001), "snap_txn")
+save_hive(cc_txn.sample(0.001), conf_mapper, "snap_txn")
 
 # COMMAND ----------
 
-# MAGIC %md ##Stamp date, time
+# MAGIC %md ##Stamp time of day, day of month
 
 # COMMAND ----------
+
+from src.utils import conf
+conf_path = "../config/feature_migration.json"
+conf_mapper = conf.conf_reader(conf_path)
 
 txn = spark.table(conf_mapper["storage"]["hive"]["prefix"] + "snap_txn")
 
 # COMMAND ----------
 
 from src.data import snap_txn
+from src.utils.storage import save_hive
 
 map_time = snap_txn.map_txn_time(spark, conf_mapper, txn)
+map_prd = snap_txn.map_txn_prod_premium(spark, conf_mapper, map_time)
+map_tndr = snap_txn.map_txn_tender(spark, conf_mapper, map_prd)
+map_cust = snap_txn.map_txn_cust_issue_first_txn(spark, conf_mapper, map_tndr)
+
+save_hive(map_time, conf_mapper, "snap_txn_map_details")
+
+# COMMAND ----------
+
+conf_mapper["storage"]["hive"]["snap_txn_map_details"] = conf_mapper["storage"]["hive"]["prefix"] + "snap_txn_map_details"
+conf.conf_writer(conf_mapper, conf_path)
+
+# COMMAND ----------
+
+# MAGIC %md ##Map promo / markdown
+
+# COMMAND ----------
+
+from src.utils import conf
+conf_path = "../config/feature_migration.json"
+conf_mapper = conf.conf_reader(conf_path)
+
+# COMMAND ----------
+
+from src.data import snap_txn
+from src.utils.storage import save_hive
+
+txn = spark.table(conf_mapper["storage"]["hive"]["snap_txn_map_details"])
+
+map_promo = snap_txn.map_txn_promo(spark, conf_mapper, txn)
+
+# COMMAND ----------
+
+save_hive(map_promo, conf_mapper, "snap_txn_map_promo")
 
 # COMMAND ----------
 

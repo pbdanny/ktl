@@ -333,7 +333,7 @@ def map_txn_promo(spark, conf_mapper, txn):
     
     df_date_filtered = scope_date_dim.filter(F.col('promoweek_id').between(start_promoweek, end_promoweek))
 
-    df_promo = spark.table('tdm.v_th_rpm_promo').filter(F.col('active_flag') == 'Y')\
+    df_promo = spark.table('tdm.tdm_promo_detail').filter(F.col('active_flag') == 'Y')\
                                                         .filter((F.col('change_type').isNotNull()))
 
     df_promozone = spark.table('tdm.v_th_promo_zone')

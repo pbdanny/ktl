@@ -1,5 +1,8 @@
 from functools import wraps
 
+from pyspark.sql import SparkSession
+from typing import Optional
+
 def logger(fn):
     '''
     Decorator to log function name and arguments
@@ -16,7 +19,6 @@ def logger(fn):
         print(f">>> Running {fn.__name__!r} function. Logged at {called_at}")
         print(f">>> kwargs {kwargs}")
         to_execute = fn(*args, **kwargs)
-        print(f">>> Function: {fn.__name__!r} executed. Logged at {called_at}")
+        print(f">>> Function executed, elapsed {(datetime.now(timezone.utc) - called_at).total_seconds()} sec.")
         return to_execute
-
     return inner

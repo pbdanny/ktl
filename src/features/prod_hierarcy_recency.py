@@ -100,3 +100,18 @@ def get_agg_prd_hier_recency(spark, conf_mapper, txn, prod_hier_id_col_nm:str, r
     pivoted_div_df = pivoted_div_df.filter(~(F.col('household_id') == -1))
 
     return pivoted_div_df
+
+@logger
+def get_agg_distinct_prod_store(spark, conf_mapper, txn):
+    """
+    """
+    c_distinct = txn.groupBy('household_id')\
+                                .agg(F.countDistinct('department_id').alias('N_DISTINCT_DEP'),\
+                                    F.count_distinct('division_id').alias('N_DISTINCT_DIV'),\
+                                    F.count_distinct('section_code').alias('N_DISTINCT_SEC'),\
+                                    F.count_distinct('class_code').alias('N_DISTINCT_CLASS'),\
+                                    F.count_distinct('subclass_code').alias('N_DISTINCT_SUBCLASS'),\
+                                    F.count_distinct('store_id').alias('N_STORES'))\
+                                .fillna(0)
+                                
+    return c_distinct

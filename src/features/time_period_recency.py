@@ -181,7 +181,7 @@ def get_agg_time_of_day(spark, conf_mapper, txn):
             .withColumn('PCT_PCT_Visits', F.col('PCT_Visits') / F.col('Total_Visits'))\
             .withColumn('PCT_PCT_Units', F.col('PCT_Units') / F.col('Total_Units'))
             
-    pivot_columns = time_day_df.select("fest_flag").distinct().rdd.flatMap(lambda x: x).collect()
+    pivot_columns = time_day_df.select("time_of_day").distinct().rdd.flatMap(lambda x: x).collect()
     pivoted_time_day_df = time_day_df.groupBy("household_id").pivot("time_of_day", pivot_columns).agg(
         F.first("Spend").alias("Spend"),
         F.first("Visits").alias("Visits"),

@@ -766,6 +766,10 @@ flag_promo_df = spark.table("tdm_seg.kritawatkrai_th_year_full_data_w_promo_tmp"
 
 # COMMAND ----------
 
+# MAGIC %md ##Add dummy customer hh_id = -1
+
+# COMMAND ----------
+
 #add dummy customer
 product_df = spark.table('tdm.v_prod_dim_c').select(['upc_id','brand_name','division_id','division_name','department_id','department_name','department_code','section_id','section_name','section_code','class_id','class_name','class_code','subclass_id','subclass_name','subclass_code'])\
                                                  .filter(F.col('division_id').isin(product_division))\
@@ -826,16 +830,16 @@ flag_promo_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_
 
 # COMMAND ----------
 
+# MAGIC %md #Aggregation
+
+# COMMAND ----------
+
 # DBTITLE 1,Load Table
 full_flag_df = spark.table('tdm_seg.kritawatkrai_th_year_full_data_w_promo_w_dummy_tmp')
 
 # COMMAND ----------
 
-# DBTITLE 0,Untitledt
-# MAGIC %md
-# MAGIC
-# MAGIC ## Aggregation
-# MAGIC
+# MAGIC %md ##Aggregation - Total store
 
 # COMMAND ----------
 
@@ -851,6 +855,11 @@ total_df = full_flag_df.groupBy('household_id')\
 
 # DBTITLE 1,Save Total
 total_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_total_agg_data_tmp")
+
+# COMMAND ----------
+
+# DBTITLE 0,Untitledt
+# MAGIC %md ## Aggregation - By product hierarchy + recency
 
 # COMMAND ----------
 

@@ -20,7 +20,9 @@
         "hive": {
             "prefix": "tdm_seg.th_lotuss_thanakrit_ktl_",
             "snap_txn": "tdm_seg.th_lotuss_thanakrit_ktl_snap_txn",
-            "snap_txn_map_details": "tdm_seg.th_lotuss_thanakrit_ktl_snap_txn_map_details"
+            "snap_txn_map_details": "tdm_seg.th_lotuss_thanakrit_ktl_snap_txn_map_details",
+            "snap_txn_map_promo": "tdm_seg.th_lotuss_thanakrit_ktl_snap_txn_map_promo",
+            "snap_txn_add_dummy_hh_combine_prod_hier": "tdm_seg.th_lotuss_thanakrit_ktl_snap_txn_add_dummy_hh_combine_prod_hier"
         }
     }
 }

@@ -139,4 +139,49 @@ save_hive(map_promo, conf_mapper, "snap_txn_map_promo")
 
 # COMMAND ----------
 
+conf_mapper["storage"]["hive"]["snap_txn_map_promo"] = conf_mapper["storage"]["hive"]["prefix"] + "snap_txn_map_promo"
+conf.conf_writer(conf_mapper, conf_path)
+
+# COMMAND ----------
+
+# MAGIC %md ##Add dummpy hh & create combined product hierarchy
+
+# COMMAND ----------
+
+from src.utils import conf
+conf_path = "../config/feature_migration.json"
+conf_mapper = conf.conf_reader(conf_path)
+
+# COMMAND ----------
+
+conf_mapper
+
+# COMMAND ----------
+
+txn = spark.table(conf_mapper["storage"]["hive"]["snap_txn_map_promo"])
+
+# COMMAND ----------
+
+from src.data import snap_txn
+from src.utils.storage import save_hive
+
+dummy_hh = snap_txn.create_dummy_hh(spark, conf_mapper)
+txn_w_dummy = txn.unionByName(dummy_hh, allowMissingColumns=True)
+txn_comb_prod_heir = snap_txn.create_combined_prod_hier(spark, conf_mapper, txn_w_dummy)
+
+# COMMAND ----------
+
+save_hive(txn_comb_prod_heir, conf_mapper, "snap_txn_add_dummy_hh_combine_prod_hier")
+
+# COMMAND ----------
+
+conf_mapper["storage"]["hive"]["snap_txn_add_dummy_hh_combine_prod_hier"] = conf_mapper["storage"]["hive"]["prefix"] + "snap_txn_add_dummy_hh_combine_prod_hier"
+conf.conf_writer(conf_mapper, conf_path)
+
+# COMMAND ----------
+
+conf_mapper
+
+# COMMAND ----------
+
 

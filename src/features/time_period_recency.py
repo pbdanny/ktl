@@ -104,10 +104,11 @@ def get_agg_festive(spark, conf_mapper, txn):
     """
     from pyspark.sql import functions as F
     
-    fest_df = txn.groupBy('household_id', 'fest_flag')\
-                                    .agg(F.sum('net_spend_amt').alias('Spend'), \
-                                    F.countDistinct('transaction_uid').alias('Visits'), \
-                                    F.sum('unit').alias('Units'))\
+    fest_df = txn.where(F.col("fest_flag").isNotNull())\
+                    .groupBy('household_id', 'fest_flag')\
+                        .agg(F.sum('net_spend_amt').alias('Spend'), \
+                            F.countDistinct('transaction_uid').alias('Visits'), \
+                                F.sum('unit').alias('Units'))\
                                     .fillna(0)
                                     
     total_df = get_agg_total_store(spark, conf_mapper, txn)

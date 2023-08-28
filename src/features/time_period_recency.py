@@ -78,7 +78,7 @@ def get_agg_quarter(spark, conf_mapper, txn, quarter_col_nm:str):
     
     qtr1_df = txn.filter(F.col(quarter_col_nm) == 'Y')\
                         .groupBy('household_id','app_year_qtr')\
-                        .agg(sum('net_spend_amt').alias(f'{features_qrt_col_nm}_SPEND'), \
+                        .agg(F.sum('net_spend_amt').alias(f'{features_qrt_col_nm}_SPEND'), \
                             F.countDistinct('transaction_uid').alias(f'{features_qrt_col_nm}_VISITS'), \
                             F.sum('unit').alias(f'{features_qrt_col_nm}_UNITS'))
                                                 

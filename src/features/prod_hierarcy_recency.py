@@ -77,7 +77,8 @@ def get_agg_prd_hier_recency(spark, conf_mapper, txn, prod_hier_id_col_nm:str, r
         F.first("PCT_Units").alias("PCT_Units")
     ).fillna(0)
     
-    MAPPER_RECENCY_NM_FEATURE_NM = {"last_3_flag": "_L3",
+    MAPPER_RECENCY_NM_FEATURE_NM = {"":"",
+                                    "last_3_flag": "_L3",
                                     "last_6_flag": "_L6",
                                     "last_9_flag": "_L9"}
 

@@ -12,7 +12,7 @@ def get_agg_total_store(spark, conf_mapper, txn):
     """
     agg_total = txn.groupBy('household_id')\
                    .agg(F.sum('net_spend_amt').alias('Total_Spend'), \
-                        F.count_distinct('unique_transaction_uid').alias('Total_Visits'), \
+                        F.count_distinct('transaction_uid').alias('Total_Visits'), \
                         F.sum('unit').alias('Total_Units'))
                    
     return agg_total
@@ -49,7 +49,7 @@ def get_agg_prd_hier_recency(spark, conf_mapper, txn, prod_hier_id_col_nm:str, r
                 .filter(~(F.col(prod_hier_id_col_nm).isin(exclusion_list)))\
                     .groupBy('household_id', prod_hier_id_col_nm)\
                         .agg(F.sum('net_spend_amt').alias('Spend'), \
-                        F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                        F.count_distinct('transaction_uid').alias('Visits'), \
                             F.sum('unit').alias('Units'))
                         
     div_df = div_df.join(total_df, on='household_id', how='inner')

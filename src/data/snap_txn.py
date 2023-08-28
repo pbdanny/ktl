@@ -11,7 +11,7 @@ sys.path.append('../')
 
 @logger
 def get_txn_cc_exc_trdr(spark, conf_mapper):
-        
+
     start_week = conf_mapper["data"]["start_week"]
     end_week = conf_mapper["data"]["end_week"]
     timeframe_start = conf_mapper["data"]["timeframe_start"]
@@ -24,7 +24,7 @@ def get_txn_cc_exc_trdr(spark, conf_mapper):
            .withColumn("store_region", F.when(F.col("store_region").isNull(), "Unidentified").otherwise(F.col("store_region")))
     )
 
-    # Remove trader 
+    # Remove trader
     trader_df = spark.table('tdm_seg.trader2023_subseg_master')
     max_quarter_id = 0
     max_quarter_id_trader = trader_df.agg(F.max('quarter_id')).collect()[0][0]
@@ -43,7 +43,7 @@ def get_txn_cc_exc_trdr(spark, conf_mapper):
 
 @logger
 def map_txn_time(spark, conf_mapper, txn):
-    
+
     decision_date = conf_mapper["data"]["decision_date"]
     start_week = conf_mapper["data"]["start_week"]
     end_week = conf_mapper["data"]["end_week"]
@@ -74,20 +74,20 @@ def map_txn_time(spark, conf_mapper, txn):
                                                 .when(F.col('tran_hour') >= 21, 'late')
                                                 .when(F.col('tran_hour') <= 4, 'night')
                                                 .otherwise('def'))
-                    .withColumn('week_of_month', 
+                    .withColumn('week_of_month',
                                 F.when(F.col('day_in_month_nbr') <= 7, 1)
                                 .when((F.col('day_in_month_nbr') > 7) & (F.col('day_in_month_nbr') <= 14), 2)
                                 .when((F.col('day_in_month_nbr') > 14) & (F.col('day_in_month_nbr') <= 21), 3)
                                 .when(F.col('day_in_month_nbr') > 21, 4))
-                    .withColumn('weekend_flag', 
+                    .withColumn('weekend_flag',
                                 F.when(F.col('weekday_nbr').isin(6,7), F.lit('Y'))
                                 .when((F.col('weekday_nbr') == 5) & (F.col('time_of_day').isin('evening', 'late')), 'Y')
                                 .otherwise('N'))
-    )    
+    )
     # festive week : Songkran, NewYear
     max_week_december = (scope_date_dim
                             .filter((F.col("month_id") % 100) == 12)
-                            .filter(F.col("week_id").startswith(F.col("month_id").substr(1, 4))) 
+                            .filter(F.col("week_id").startswith(F.col("month_id").substr(1, 4)))
                             .agg(F.max(F.col("week_id")).alias("max_week_december")).collect()[0]["max_week_december"]
         )
 
@@ -104,7 +104,7 @@ def map_txn_time(spark, conf_mapper, txn):
     time_of_day_df = time_of_day_df.withColumn('fest_flag',F.when(F.col('week_id').isin(xmas_week_id), 'XMAS')\
                                                         .when(F.col('month_id').cast('string').endswith('04'), 'APRIL')\
                                                         .otherwise('NONE'))
-    
+
 
 
     # Last week of month (Payweek)
@@ -182,7 +182,7 @@ def map_txn_prod_premium(spark, conf_mapper, txn):
     flagged_df = txn.join(price_level_df.select('upc_id','price_level'), on='upc_id', how='left')\
                     .fillna('NONE', subset=['price_level'])\
                     .dropna(subset=['household_id'])
-    
+
     return flagged_df
 
 @logger
@@ -192,7 +192,7 @@ def map_txn_tender(spark, conf_mapper, txn):
 
     timeframe_start = conf_mapper["data"]["timeframe_start"]
     timeframe_end = conf_mapper["data"]["timeframe_end"]
-    
+
     # RESA tender
     resa_tender = spark.table("tdm.v_resa_group_resa_tran_tender")
     resa_tender = (
@@ -268,7 +268,7 @@ def map_txn_tender(spark, conf_mapper, txn):
                                 .dropDuplicates()
 
     # Add transaction type to txn
-    flag_df = txn.join(filter_resa_tender.select('transaction_uid','store_id','date_id','resa_payment_method'), 
+    flag_df = txn.join(filter_resa_tender.select('transaction_uid','store_id','date_id','resa_payment_method'),
                                         on=['transaction_uid', 'store_id', 'date_id'], how='left')\
                                 .join(filter_oms_tender.select('transaction_uid','oms_payment_method'), on='transaction_uid', how='left')
 
@@ -283,7 +283,7 @@ def map_txn_tender(spark, conf_mapper, txn):
                                 .when((F.col('resa_payment_method') == 'VOUCH'), 'VOUCHER')
                                 .otherwise('OTHER'))
     )
-    
+
     return flag_df
 
 @logger
@@ -303,7 +303,7 @@ def map_txn_cust_issue_first_txn(spark, conf_mapper, txn):
                 .select('golden_record_external_id_hash', 'tran_datetime')
                 .withColumnRenamed('tran_datetime', 'first_tran_datetime')
                 )
-                
+
     flag_df = (
         txn
         .join(max_card_issue, on='household_id', how='left')
@@ -330,7 +330,7 @@ def map_txn_promo(spark, conf_mapper, txn):
 
     start_promoweek = scope_date_dim.filter(F.col('date_id').between(timeframe_start, timeframe_end)).agg(F.min('promoweek_id')).collect()[0][0]
     end_promoweek = scope_date_dim.filter(F.col('date_id').between(timeframe_start, timeframe_end)).agg(F.max('promoweek_id')).collect()[0][0]
-    
+
     df_date_filtered = scope_date_dim.filter(F.col('promoweek_id').between(start_promoweek, end_promoweek))
 
     df_promo = spark.table('tdm.tdm_promo_detail').filter(F.col('active_flag') == 'Y')\
@@ -338,16 +338,15 @@ def map_txn_promo(spark, conf_mapper, txn):
 
     df_promozone = spark.table('tdm.v_th_promo_zone')
 
+    # df_prod = spark.table('tdm.v_prod_dim_c').filter(F.col('division_id').isin([1,2,3,4,9,10,13]))\
+    #                                                 .filter(F.col('country') == "th")
 
-    df_prod = spark.table('tdm.v_prod_dim_c').filter(F.col('division_id').isin([1,2,3,4,9,10,13]))\
-                                                    .filter(F.col('country') == "th")
-
-    df_trans_item = spark.table('tdm.v_transaction_item').filter(F.col('week_id').between(start_week, end_week))\
-                                                        .filter(F.col('date_id').between(timeframe_start,timeframe_end))\
-                                                        .filter(F.col('country') == "th")\
-                                                        .where((F.col('net_spend_amt')>0)&(F.col('product_qty')>0)&(F.col('date_id').isNotNull()))\
-                                                        .filter(F.col('cc_flag') == 'cc')\
-                                                        .dropDuplicates()
+    # df_trans_item = spark.table('tdm.v_transaction_item').filter(F.col('week_id').between(start_week, end_week))\
+    #                                                     .filter(F.col('date_id').between(timeframe_start,timeframe_end))\
+    #                                                     .filter(F.col('country') == "th")\
+    #                                                     .where((F.col('net_spend_amt')>0)&(F.col('product_qty')>0)&(F.col('date_id').isNotNull()))\
+    #                                                     .filter(F.col('cc_flag') == 'cc')\
+    #                                                     .dropDuplicates()
 
     df_store = spark.table('tdm.v_store_dim_c').filter(F.col('format_id').isin([1,2,3,4,5]))\
                                                     .filter(F.col('country') == "th")\
@@ -356,10 +355,10 @@ def map_txn_promo(spark, conf_mapper, txn):
                                                                                 .when(F.col('format_id') == 5, 'Mini Supermarket')\
                                                                                 .otherwise(F.col('format_id')))\
                                                                                 .dropDuplicates()
-                                                                                
+
     # Join tables into main table
 
-    df_promo_join = df_promo.select('promo_id', 'promo_offer_id', 'change_type', 'promo_start_date', 'promo_end_date', 
+    df_promo_join = df_promo.select('promo_id', 'promo_offer_id', 'change_type', 'promo_start_date', 'promo_end_date',
                                     'promo_storegroup_id', 'upc_id', 'source').drop_duplicates()
 
     df_promozone_join = df_promozone.select('zone_id', 'location') \
@@ -370,7 +369,7 @@ def map_txn_promo(spark, conf_mapper, txn):
 
     # "Explode" Promo table with one row per each date in each Promo ID & UPC ID combination
     # can join on date_id now
-    df_promo_exploded = df_promo_join.join(df_date_join, 
+    df_promo_exploded = df_promo_join.join(df_date_join,
                                         on=((df_promo_join['promo_start_date'] <= df_date_join['date_id']) &
                                             (df_promo_join['promo_end_date'] >= df_date_join['date_id'])),
                                         how='inner')
@@ -383,12 +382,12 @@ def map_txn_promo(spark, conf_mapper, txn):
     # Explode the table further so each store ID is joined to each Promo ID & UPC ID & date combination
     # Filter only for store formats 1-5
     df_promo_with_stores = df_promo_exploded.join(df_promozone_join, on='promo_storegroup_id', how='left') \
-                                            .join(df_store_join, on='store_id', how='inner')                                                                                
-    # get txn from flag_df that appears in promo but only keep rows from flag_df 
+                                            .join(df_store_join, on='store_id', how='inner')
+    # get txn from flag_df that appears in promo but only keep rows from flag_df
     promo_df = txn.join(df_promo_with_stores, on=['date_id','upc_id','store_id'], how='leftsemi')
 
-    non_promo_df = txn.join(promo_df, on=['household_id', 'transaction_uid', 'store_id', 'date_id', 'upc_id'], how='leftanti')                                            
-    
+    non_promo_df = txn.join(promo_df, on=['household_id', 'transaction_uid', 'store_id', 'date_id', 'upc_id'], how='leftanti')
+
     # Flag promo / markdown
     promo_df = promo_df.withColumn('discount_reason_code',F.lit('P'))\
                     .withColumn('promo_flag',F.lit('PROMO'))
@@ -397,6 +396,74 @@ def map_txn_promo(spark, conf_mapper, txn):
                                                                 .otherwise('NONE'))\
                             .withColumn('promo_flag',F.when(F.col('discount_reason_code') == 'M', 'MARK_DOWN')\
                                                         .otherwise(F.col('discount_reason_code')))
-                            
+
     promo_df = promo_df.unionByName(non_promo_df)
     return promo_df
+
+@logger
+def create_dummy_hh(spark, conf_mapper):
+    """Dummy houhsehold with
+    1) Add required dep, sec per features list but not available in current prod hier
+    2) Excluded dep, sec per agreed with BAY
+    """
+    from pyspark.sql import types as T
+
+    #add dummy customer
+    product_df = spark.table('tdm.v_prod_dim_c').select(['upc_id','brand_name','division_id','division_name','department_id','department_name','department_code',
+                                                         'section_id','section_name','section_code','class_id','class_name','class_code','subclass_id','subclass_name','subclass_code'])\
+                                                    .filter(F.col('division_id').isin([1,2,3,4,9,10,13]))\
+                                                    .filter(F.col('country') == 'th')
+
+    dep_exclude = ['1_36','1_92','13_25','13_32']
+    sec_exclude = ['3_7_130', '3_7_131', '3_8_132', '3_9_81', '10_43_34', '3_14_78', '13_6_205', '13_67_364',
+        '1_36_708', '1_45_550', '1_92_992', '2_3_245', '2_4_253', '2_66_350', '13_25_249', '2_4_253',
+        '13_25_250', '13_25_251', '13_67_359', '2_66_350', '4_10_84', '4_56_111', '10_46_549',
+        '13_6_316', '13_25_249', '13_25_250', '13_25_251', '13_67_359', '13_32_617', '13_67_360', '2_4_719']
+
+    # Dummy with all divison_id
+    div_cust = product_df.select('division_id').distinct()\
+                        .withColumn('household_id',F.lit(-1))
+
+    dep_schema = T.StructType([
+        T.StructField("department_code", T.StringType(), nullable=False),
+        T.StructField("household_id", T.IntegerType(), nullable=False)
+    ])
+
+    added_missing_dep = [("2_33", -1)]
+
+    added_missing_dep_df = spark.createDataFrame(added_missing_dep, dep_schema)
+
+    dep_cust = product_df.select('department_code').filter(~(F.col('department_code').isin(dep_exclude))).distinct()\
+                            .withColumn('household_id',F.lit(-1))\
+                            .unionByName(added_missing_dep_df)
+
+    sec_schema = T.StructType([
+        T.StructField("section_code", T.StringType(), nullable=False),
+        T.StructField("household_id", T.IntegerType(), nullable=False)
+    ])
+
+    added_missing_sec = [("3_14_80", -1),
+                ("10_46_20", -1),
+                ("2_33_704", -1)]
+
+    added_missing_sec_df = spark.createDataFrame(added_missing_sec, sec_schema)
+
+    sec_cust = product_df.select('section_code').filter(~(F.col('section_code').isin(sec_exclude))).distinct()\
+                            .withColumn('household_id',F.lit(-1))\
+                            .unionByName(added_missing_sec_df)
+
+    all_dummy = div_cust.unionByName(dep_cust, allowMissingColumns=True).unionByName(sec_cust, allowMissingColumns=True)
+
+    return all_dummy
+
+@logger
+def create_combined_prod_hier(spark, conf_mapper, txn):
+    """Combine dep, sec per agreed with BAY
+    """
+    comb_txn = txn.withColumn('grouped_department_code',F.when(F.col('department_code').isin('13_79', '13_77', '13_78'), '13_77&13_78&13_79')\
+                                                                  .otherwise(F.col('department_code')))\
+                  .withColumn('grouped_section_code',F.when(F.col('section_code').isin('1_2_187', '1_2_86'), '1_2_187&1_2_86')\
+                                                      .when(F.col('section_code').isin('3_14_50', '3_51_416'), '3_14_50&3_51_416')\
+                                                      .when(F.col('section_code').isin('2_3_195', '2_3_52'), '2_3_195&2_3_52')\
+                                                      .otherwise(F.col('section_code')))
+    return comb_txn

@@ -157,7 +157,7 @@ def get_agg_time_of_day(spark, conf_mapper, txn):
     """
     from pyspark.sql import functions as F
     
-    time_of_day = txn.where(F.col("fest_flag").isNotNull())\
+    time_of_day = txn.where(F.col("time_of_day").isNotNull())\
                      .groupBy('household_id', 'time_of_day')\
                                 .agg(F.sum('net_spend_amt').alias('Spend'), \
                                 F.countDistinct('transaction_uid').alias('Visits'), \

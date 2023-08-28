@@ -15,7 +15,7 @@ def get_agg_monthly(spark, conf_mapper, txn):
     
     monthly_df = txn.groupBy('household_id', 'end_month_date')\
                                 .agg(F.sum('net_spend_amt').alias('Spend'), \
-                                F.countDistinct('unique_transaction_uid').alias('Visits'), \
+                                F.countDistinct('transaction_uid').alias('Visits'), \
                                 F.sum('unit').alias('Units'))\
                                 .fillna(0)
 
@@ -44,7 +44,7 @@ def get_agg_wkly(spark, conf_mapper, txn):
     
     weekly_df = txn.groupBy('household_id', 'week_of_month')\
                                     .agg(F.sum('net_spend_amt').alias('Spend'), \
-                                    F.countDistinct('unique_transaction_uid').alias('Visits'), \
+                                    F.countDistinct('transaction_uid').alias('Visits'), \
                                     F.sum('unit').alias('Units'))\
                                     .fillna(0)
 
@@ -79,7 +79,7 @@ def get_agg_quarter(spark, conf_mapper, txn, quarter_col_nm:str):
     qtr1_df = txn.filter(F.col(quarter_col_nm) == 'Y')\
                         .groupBy('household_id','app_year_qtr')\
                         .agg(sum('net_spend_amt').alias(f'{features_qrt_col_nm}_SPEND'), \
-                            F.countDistinct('unique_transaction_uid').alias(f'{features_qrt_col_nm}_VISITS'), \
+                            F.countDistinct('transaction_uid').alias(f'{features_qrt_col_nm}_VISITS'), \
                             F.sum('unit').alias(f'{features_qrt_col_nm}_UNITS'))
                                                 
     qtr1_df = qtr1_df.join(total_df, on='household_id', how='inner')
@@ -106,7 +106,7 @@ def get_agg_festive(spark, conf_mapper, txn):
     
     fest_df = txn.groupBy('household_id', 'fest_flag')\
                                     .agg(F.sum('net_spend_amt').alias('Spend'), \
-                                    F.countDistinct('unique_transaction_uid').alias('Visits'), \
+                                    F.countDistinct('transaction_uid').alias('Visits'), \
                                     F.sum('unit').alias('Units'))\
                                     .fillna(0)
                                     
@@ -158,7 +158,7 @@ def get_agg_time_of_day(spark, conf_mapper, txn):
     
     time_of_day = txn.groupBy('household_id', 'time_of_day')\
                                 .agg(F.sum('net_spend_amt').alias('Spend'), \
-                                F.countDistinct('unique_transaction_uid').alias('Visits'), \
+                                F.countDistinct('transaction_uid').alias('Visits'), \
                                 F.sum('unit').alias('Units'))\
                                 .fillna(0)
                                 

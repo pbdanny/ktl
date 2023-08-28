@@ -157,7 +157,8 @@ def get_agg_time_of_day(spark, conf_mapper, txn):
     """
     from pyspark.sql import functions as F
     
-    time_of_day = txn.groupBy('household_id', 'time_of_day')\
+    time_of_day = txn.where(F.col("fest_flag").isNotNull())\
+                     .groupBy('household_id', 'time_of_day')\
                                 .agg(F.sum('net_spend_amt').alias('Spend'), \
                                 F.countDistinct('transaction_uid').alias('Visits'), \
                                 F.sum('unit').alias('Units'))\
@@ -165,7 +166,7 @@ def get_agg_time_of_day(spark, conf_mapper, txn):
                                 
     total_df = get_agg_total_store(spark, conf_mapper, txn)
                                 
-    time_day_df = time_day_df.join(total_df, on='household_id', how='inner')
+    time_day_df = time_of_day.join(total_df, on='household_id', how='inner')
     
     time_day_df = time_day_df.withColumn('SPV', F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
                                 .otherwise(F.col('Spend') / F.col('Visits')))\

@@ -208,3 +208,125 @@ def get_agg_time_of_day(spark, conf_mapper, txn):
 
     return pivoted_time_day_df
 
+
+@logger
+def get_agg_wkend(spark, conf_mapper, txn):
+    
+    wknd_df = txn.filter(F.col('weekend_flag') == 'Y')\
+                        .groupBy('household_id')\
+                        .agg(F.sum('net_spend_amt').alias('WKND_FLAG_Y_SPEND'), \
+                        F.count_distinct('unique_transaction_uid').alias('WKND_FLAG_Y_VISITS'), \
+                            F.sum('unit').alias('WKND_FLAG_Y_UNITS'))
+                        
+    total_df = get_agg_total_store(spark, conf_mapper, txn)
+                                                
+    wknd_df = wknd_df.join(total_df, on='household_id', how='inner')
+
+    wknd_df = wknd_df.withColumn('WKND_FLAG_Y_SPV',F.when((F.col('WKND_FLAG_Y_VISITS').isNull()) | (F.col('WKND_FLAG_Y_VISITS') == 0), 0)\
+                                    .otherwise(F.col('WKND_FLAG_Y_SPEND') /F.col('WKND_FLAG_Y_VISITS')))\
+                .withColumn('WKND_FLAG_Y_UPV',F.when((F.col('WKND_FLAG_Y_VISITS').isNull()) | (F.col('WKND_FLAG_Y_VISITS') == 0), 0)\
+                                    .otherwise(F.col('WKND_FLAG_Y_UNITS') /F.col('WKND_FLAG_Y_VISITS')))\
+                .withColumn('WKND_FLAG_Y_SPU',F.when((F.col('WKND_FLAG_Y_UNITS').isNull()) | (F.col('WKND_FLAG_Y_UNITS') == 0), 0)\
+                                    .otherwise(F.col('WKND_FLAG_Y_SPEND') /F.col('WKND_FLAG_Y_UNITS')))\
+                .withColumn('PCT_WKND_FLAG_Y_SPEND',F.col('WKND_FLAG_Y_SPEND') * 100 /F.col('Total_Spend'))\
+                .withColumn('PCT_WKND_FLAG_Y_VISITS',F.col('WKND_FLAG_Y_VISITS') * 100 /F.col('Total_Visits'))\
+                .withColumn('PCT_WKND_FLAG_Y_UNITS',F.col('WKND_FLAG_Y_UNITS') * 100 /F.col('Total_Units'))\
+                .fillna(0)\
+                .drop('Total_Spend', 'Total_Visits', 'Total_Units')
+                
+    return wknd_df
+
+@logger
+def get_agg_last_wkend(spark, conf_mapper, txn):
+    """
+    """
+    from pyspark.sql import functions as F
+    
+    last_wknd_df = txn.where(F.col('last_weekend_flag') == 'Y')\
+                     .groupBy('household_id')\
+                     .agg(F.sum('net_spend_amt').alias('LAST_WKND_SPEND'), \
+                          F.count_distinct('transaction_uid').alias('LAST_WKND_VISITS'), \
+                          F.sum('unit').alias('LAST_WKND_UNITS'))
+                                
+    total_df = get_agg_total_store(spark, conf_mapper, txn)
+                                
+    last_wknd_df = last_wknd_df.join(total_df, on='household_id', how='inner')
+    last_wknd_df = last_wknd_df.withColumn('LAST_WKND_SPV',F.when((F.col('LAST_WKND_VISITS').isNull()) | (F.col('LAST_WKND_VISITS') == 0), 0)\
+                                    .otherwise(F.col('LAST_WKND_SPEND') /F.col('LAST_WKND_VISITS')))\
+                .withColumn('LAST_WKND_UPV',F.when((F.col('LAST_WKND_VISITS').isNull()) | (F.col('LAST_WKND_VISITS') == 0), 0)\
+                                    .otherwise(F.col('LAST_WKND_UNITS') /F.col('LAST_WKND_VISITS')))\
+                .withColumn('LAST_WKND_SPU',F.when((F.col('LAST_WKND_UNITS').isNull()) | (F.col('LAST_WKND_UNITS') == 0), 0)\
+                                    .otherwise(F.col('LAST_WKND_SPEND') /F.col('LAST_WKND_UNITS')))\
+                .withColumn('PCT_LAST_WKND_SPEND',F.col('LAST_WKND_SPEND') * 100 /F.col('Total_Spend'))\
+                .withColumn('PCT_LAST_WKND_VISITS',F.col('LAST_WKND_VISITS') * 100 /F.col('Total_Visits'))\
+                .withColumn('PCT_LAST_WKND_UNITS',F.col('LAST_WKND_UNITS') * 100 /F.col('Total_Units'))\
+                .withColumn('PCT_PCT_LAST_WKND_SPEND',F.col('LAST_WKND_SPEND')  /F.col('Total_Spend'))\
+                .withColumn('PCT_PCT_LAST_WKND_VISITS',F.col('LAST_WKND_VISITS')  /F.col('Total_Visits'))\
+                .withColumn('PCT_PCT_LAST_WKND_UNITS',F.col('LAST_WKND_UNITS')  /F.col('Total_Units'))\
+                .fillna(0)\
+                .drop('Total_Spend', 'Total_Visits', 'Total_Units')
+                
+    return last_wknd_df
+
+@logger
+def get_agg_wkday(spark, conf_mapper, txn):
+    """
+    """
+    from pyspark.sql import functions as F
+    
+    wkday_df = txn.where(F.col('last_weekend_flag') == 'N')\
+                       .groupBy('household_id')\
+                       .agg(F.sum('net_spend_amt').alias('WKND_FLAG_N_SPEND'), \
+                       F.count_distinct('unique_transaction_uid').alias('WKND_FLAG_N_VISITS'), \
+                        F.sum('unit').alias('WKND_FLAG_N_UNITS'))
+                                
+    total_df = get_agg_total_store(spark, conf_mapper, txn)
+    
+    wkday_df = wkday_df.join(total_df, on='household_id', how='inner')
+    
+    wkday_df = wkday_df.withColumn('WKND_FLAG_N_SPV',F.when((F.col('WKND_FLAG_N_VISITS').isNull()) | (F.col('WKND_FLAG_N_VISITS') == 0), 0)\
+                                 .otherwise(F.col('WKND_FLAG_N_SPEND') /F.col('WKND_FLAG_N_VISITS')))\
+               .withColumn('WKND_FLAG_N_UPV',F.when((F.col('WKND_FLAG_N_VISITS').isNull()) | (F.col('WKND_FLAG_N_VISITS') == 0), 0)\
+                                 .otherwise(F.col('WKND_FLAG_N_UNITS') /F.col('WKND_FLAG_N_VISITS')))\
+               .withColumn('WKND_FLAG_N_SPU',F.when((F.col('WKND_FLAG_N_UNITS').isNull()) | (F.col('WKND_FLAG_N_UNITS') == 0), 0)\
+                                 .otherwise(F.col('WKND_FLAG_N_SPEND') /F.col('WKND_FLAG_N_UNITS')))\
+               .withColumn('PCT_WKND_FLAG_N_SPEND',F.col('WKND_FLAG_N_SPEND') * 100 /F.col('Total_Spend'))\
+               .withColumn('PCT_WKND_FLAG_N_VISITS',F.col('WKND_FLAG_N_VISITS') * 100 /F.col('Total_Visits'))\
+               .withColumn('PCT_WKND_FLAG_N_UNITS',F.col('WKND_FLAG_N_UNITS') * 100 /F.col('Total_Units'))\
+               .fillna(0)\
+               .drop('Total_Spend', 'Total_Visits', 'Total_Units')
+               
+    return wkday_df
+
+@logger
+def get_agg_recency(spark, conf_mapper, txn, recency_col_nm:str):
+    """
+    """
+    MAPPER_RECENCY_NM_FEATURE_NM = {"":"",
+                                    "last_3_flag": "L3",
+                                    "last_6_flag": "L6",
+                                    "last_9_flag": "L9"}
+    features_rcncy_col_nm = MAPPER_RECENCY_NM_FEATURE_NM[recency_col_nm]
+        
+    l3_df = txn.filter(F.col(recency_col_nm) == 'Y')\
+                       .groupBy('household_id')\
+                       .agg(F.sum('net_spend_amt').alias(f'{features_rcncy_col_nm}_SPEND'), \
+                       F.count_distinct('utransaction_uid').alias(f'{features_rcncy_col_nm}_VISITS'), \
+                        F.sum('unit').alias(f'{features_rcncy_col_nm}_UNITS'))
+
+    total_df = get_agg_total_store(spark, conf_mapper, txn)
+    
+    l3_df = l3_df.join(total_df, on='household_id', how='inner')
+
+    l3_df = l3_df.withColumn(f'{features_rcncy_col_nm}_SPV',F.when((F.col(f'{features_rcncy_col_nm}_VISITS').isNull()) | (F.col(f'{features_rcncy_col_nm}_VISITS') == 0), 0)\
+                                    .otherwise(F.col(f'{features_rcncy_col_nm}_SPEND') /F.col(f'{features_rcncy_col_nm}_VISITS')))\
+                .withColumn(f'{features_rcncy_col_nm}_UPV',F.when((F.col(f'{features_rcncy_col_nm}_VISITS').isNull()) | (F.col(f'{features_rcncy_col_nm}_VISITS') == 0), 0)\
+                                    .otherwise(F.col(f'{features_rcncy_col_nm}_UNITS') /F.col(f'{features_rcncy_col_nm}_VISITS')))\
+                .withColumn(f'{features_rcncy_col_nm}_SPU',F.when((F.col(f'{features_rcncy_col_nm}_UNITS').isNull()) | (F.col(f'{features_rcncy_col_nm}_UNITS') == 0), 0)\
+                                    .otherwise(F.col(f'{features_rcncy_col_nm}_SPEND') /F.col(f'{features_rcncy_col_nm}_UNITS')))\
+                .withColumn(f'PCT_{features_rcncy_col_nm}_SPEND',F.col(f'{features_rcncy_col_nm}_SPEND') * 100 /F.col('Total_Spend'))\
+                .withColumn(f'PCT_{features_rcncy_col_nm}_VISITS',F.col(f'{features_rcncy_col_nm}_VISITS') * 100 /F.col('Total_Visits'))\
+                .withColumn(f'PCT_{features_rcncy_col_nm}_UNITS',F.col(f'{features_rcncy_col_nm}_UNITS') * 100 /F.col('Total_Units'))\
+                .drop('Total_Spend', 'Total_Visits', 'Total_Units', 'app_year_qtr')
+                
+    return l3_df

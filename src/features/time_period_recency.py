@@ -215,7 +215,7 @@ def get_agg_wkend(spark, conf_mapper, txn):
     wknd_df = txn.filter(F.col('weekend_flag') == 'Y')\
                         .groupBy('household_id')\
                         .agg(F.sum('net_spend_amt').alias('WKND_FLAG_Y_SPEND'), \
-                        F.count_distinct('unique_transaction_uid').alias('WKND_FLAG_Y_VISITS'), \
+                        F.count_distinct('transaction_uid').alias('WKND_FLAG_Y_VISITS'), \
                             F.sum('unit').alias('WKND_FLAG_Y_UNITS'))
                         
     total_df = get_agg_total_store(spark, conf_mapper, txn)
@@ -277,7 +277,7 @@ def get_agg_wkday(spark, conf_mapper, txn):
     wkday_df = txn.where(F.col('last_weekend_flag') == 'N')\
                        .groupBy('household_id')\
                        .agg(F.sum('net_spend_amt').alias('WKND_FLAG_N_SPEND'), \
-                       F.count_distinct('unique_transaction_uid').alias('WKND_FLAG_N_VISITS'), \
+                       F.count_distinct('transaction_uid').alias('WKND_FLAG_N_VISITS'), \
                         F.sum('unit').alias('WKND_FLAG_N_UNITS'))
                                 
     total_df = get_agg_total_store(spark, conf_mapper, txn)

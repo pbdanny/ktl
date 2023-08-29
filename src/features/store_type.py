@@ -27,7 +27,9 @@ def get_agg_store_format(spark, conf_mapper, txn):
     
     txn_add_fmt = txn.replace({"HDE":"Hypermarket", "Talad":"Supermarket", "GoFresh":"MiniSupermarket"}, subset=["store_format_online_subchannel_other"])
     
-    store_format_df = txn_add_fmt.groupBy('household_id','store_format_online_subchannel_other')\
+    store_format_df = txn_add_fmt\
+                        .where(F.col("store_format_online_subchannel_other").isNotNull())\
+                        .groupBy('household_id','store_format_online_subchannel_other')\
                         .agg(F.sum('net_spend_amt').alias('Spend'), \
                         F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
@@ -74,7 +76,9 @@ def get_agg_store_format(spark, conf_mapper, txn):
 def get_agg_store_region(spark, conf_mapper, txn):
     """
     """
-    store_region_df = txn.groupBy('household_id','store_region')\
+    store_region_df = txn\
+                        .where(F.col("store_region").isNotNull())\
+                        .groupBy('household_id','store_region')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
                        F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))

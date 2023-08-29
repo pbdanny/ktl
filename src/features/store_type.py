@@ -5,17 +5,7 @@ from datetime import datetime, timedelta
 import sys
 import os
 from functools import reduce
-
-@logger
-def get_agg_total_store(spark, conf_mapper, txn):
-    """
-    """
-    agg_total = txn.groupBy('household_id')\
-                   .agg(F.sum('net_spend_amt').alias('Total_Spend'), \
-                        F.count_distinct('transaction_uid').alias('Total_Visits'), \
-                        F.sum('unit').alias('Total_Units'))
-                   
-    return agg_total
+from .prod_hierarcy_recency import get_agg_total_store
 
 @logger
 def get_agg_store_format(spark, conf_mapper, txn):

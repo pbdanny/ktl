@@ -207,7 +207,7 @@ data_df = (
     .join(date_df, on="date_id", how="left")
     .join(customer_df, on="customer_id", how="left")
     .withColumn(
-        "unique_transaction_uid",
+        "transaction_uid",
         F.concat_ws("_", F.col("transaction_uid"), F.col("store_id"), F.col("date_id")),
     )
     .withColumn(
@@ -846,7 +846,7 @@ full_flag_df = spark.table('tdm_seg.kritawatkrai_th_year_full_data_w_promo_w_dum
 # DBTITLE 1,Total Spend Unit Visit
 total_df = full_flag_df.groupBy('household_id')\
                        .agg(F.sum('net_spend_amt').alias('Total_Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Total_Visits'), \
+                       F.count_distinct('transaction_uid').alias('Total_Visits'), \
                         F.sum('unit').alias('Total_Units'))
                        
 # total_df.display()
@@ -868,7 +868,7 @@ total_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_total
 div_df = full_flag_df.filter((F.col('division_id').isNotNull()))\
                        .groupBy('household_id','division_id')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                        
 div_df = div_df.join(total_df, on='household_id', how='inner')
@@ -930,7 +930,7 @@ pivoted_div_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year
 l3_div_df = full_flag_df.filter(F.col('last_3_flag') == 'Y')\
                        .groupBy('household_id','division_id')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                        
 l3_div_df = l3_div_df.join(total_df, on='household_id', how='inner')
@@ -982,7 +982,7 @@ pivoted_l3_div_df = pivoted_l3_div_df.filter(~(F.col('household_id') == -1))
 l6_div_df = full_flag_df.filter(F.col('last_6_flag') == 'Y')\
                        .groupBy('household_id','division_id')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                        
 l6_div_df = l6_div_df.join(total_df, on='household_id', how='inner')
@@ -1036,7 +1036,7 @@ pivoted_l6_div_df = pivoted_l6_div_df.filter(~(F.col('household_id') == -1))
 l9_div_df = full_flag_df.filter(F.col('last_9_flag') == 'Y')\
                        .groupBy('household_id','division_id')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                        
 l9_div_df = l9_div_df.join(total_df, on='household_id', how='inner')
@@ -1102,7 +1102,7 @@ dep_df = full_flag_df.filter((F.col('grouped_department_code').isNotNull()))\
                         .filter(~(F.col('grouped_department_code').isin(dep_exclude)))\
                        .groupBy('household_id','grouped_department_code')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                        
 dep_df = dep_df.join(total_df, on='household_id', how='inner')
@@ -1161,7 +1161,7 @@ sec_df = full_flag_df.filter((F.col('grouped_section_code').isNotNull()))\
                        .filter(~(F.col('grouped_section_code').isin(sec_exclude)))\
                        .groupBy('household_id','grouped_section_code')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                                                
 sec_df = sec_df.join(total_df, on='household_id', how='inner')
@@ -1244,7 +1244,7 @@ count_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_count
 # DBTITLE 1,Monthly
 monthly_df = full_flag_df.groupBy('household_id', 'end_month_date')\
                                 .agg(F.sum('net_spend_amt').alias('Spend'), \
-                               F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                               F.count_distinct('transaction_uid').alias('Visits'), \
                                 F.sum('unit').alias('Units'))\
                                 .fillna(0)
 
@@ -1280,7 +1280,7 @@ monthly_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_mon
 qtr1_df = full_flag_df.filter(F.col('q1_flag') == 'Y')\
                        .groupBy('household_id','app_year_qtr')\
                        .agg(F.sum('net_spend_amt').alias('Q1_SPEND'), \
-                       F.count_distinct('unique_transaction_uid').alias('Q1_VISITS'), \
+                       F.count_distinct('transaction_uid').alias('Q1_VISITS'), \
                         F.sum('unit').alias('Q1_UNITS'))
                                                
 qtr1_df = qtr1_df.join(total_df, on='household_id', how='inner')
@@ -1305,7 +1305,7 @@ qtr1_df = qtr1_df.withColumn('Q1_SPV',F.when((F.col('Q1_VISITS').isNull()) | (F.
 qtr2_df = full_flag_df.filter(F.col('q2_flag') == 'Y')\
                        .groupBy('household_id','app_year_qtr')\
                        .agg(F.sum('net_spend_amt').alias('Q2_SPEND'), \
-                       F.count_distinct('unique_transaction_uid').alias('Q2_VISITS'), \
+                       F.count_distinct('transaction_uid').alias('Q2_VISITS'), \
                         F.sum('unit').alias('Q2_UNITS'))
 
 qtr2_df = qtr2_df.join(total_df, on='household_id', how='inner')
@@ -1331,7 +1331,7 @@ qtr2_df = qtr2_df.withColumn('Q2_SPV',F.when((F.col('Q2_VISITS').isNull()) | (F.
 qtr3_df = full_flag_df.filter(F.col('q3_flag') == 'Y')\
                        .groupBy('household_id','app_year_qtr')\
                        .agg(F.sum('net_spend_amt').alias('Q3_SPEND'), \
-                       F.count_distinct('unique_transaction_uid').alias('Q3_VISITS'), \
+                       F.count_distinct('transaction_uid').alias('Q3_VISITS'), \
                         F.sum('unit').alias('Q3_UNITS'))
                                                
 qtr3_df = qtr3_df.join(total_df, on='household_id', how='inner')
@@ -1356,7 +1356,7 @@ qtr3_df = qtr3_df.withColumn('Q3_SPV',F.when((F.col('Q3_VISITS').isNull()) | (F.
 qtr4_df = full_flag_df.filter(F.col('q4_flag') == 'Y')\
                        .groupBy('household_id','app_year_qtr')\
                        .agg(F.sum('net_spend_amt').alias('Q4_SPEND'), \
-                       F.count_distinct('unique_transaction_uid').alias('Q4_VISITS'), \
+                       F.count_distinct('transaction_uid').alias('Q4_VISITS'), \
                         F.sum('unit').alias('Q4_UNITS'))
                                                
 qtr4_df = qtr4_df.join(total_df, on='household_id', how='inner')
@@ -1387,7 +1387,7 @@ qtr4_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_qtr4_a
 # DBTITLE 1,Weekly Spend
 weekly_df = full_flag_df.groupBy('household_id', 'week_of_month')\
                                 .agg(F.sum('net_spend_amt').alias('Spend'), \
-                               F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                               F.count_distinct('transaction_uid').alias('Visits'), \
                                 F.sum('unit').alias('Units'))\
                                 .fillna(0)
 
@@ -1414,7 +1414,7 @@ weekly_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_week
 # DBTITLE 1,Festival Spend
 fest_df = full_flag_df.groupBy('household_id','fest_flag')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                                                
 fest_df = fest_df.join(total_df, on='household_id', how='inner')
@@ -1467,7 +1467,7 @@ pivoted_fest_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_yea
 # DBTITLE 1,Time of Day
 time_day_df = full_flag_df.groupBy('household_id','time_of_day')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                                                
 time_day_df = time_day_df.join(total_df, on='household_id', how='inner')
@@ -1526,7 +1526,7 @@ pivoted_time_day_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th
 last_wknd_df = full_flag_df.filter(F.col('last_weekend_flag') == 'Y')\
                        .groupBy('household_id')\
                        .agg(F.sum('net_spend_amt').alias('LAST_WKND_SPEND'), \
-                       F.count_distinct('unique_transaction_uid').alias('LAST_WKND_VISITS'), \
+                       F.count_distinct('transaction_uid').alias('LAST_WKND_VISITS'), \
                         F.sum('unit').alias('LAST_WKND_UNITS'))
                                                
 last_wknd_df = last_wknd_df.join(total_df, on='household_id', how='inner')
@@ -1560,7 +1560,7 @@ last_wknd_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_l
 wknd_df = full_flag_df.filter(F.col('weekend_flag') == 'Y')\
                        .groupBy('household_id')\
                        .agg(F.sum('net_spend_amt').alias('WKND_FLAG_Y_SPEND'), \
-                       F.count_distinct('unique_transaction_uid').alias('WKND_FLAG_Y_VISITS'), \
+                       F.count_distinct('transaction_uid').alias('WKND_FLAG_Y_VISITS'), \
                         F.sum('unit').alias('WKND_FLAG_Y_UNITS'))
                                                
 wknd_df = wknd_df.join(total_df, on='household_id', how='inner')
@@ -1590,7 +1590,7 @@ wknd_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_wknd_a
 wkday_df = full_flag_df.filter(F.col('weekend_flag') == 'N')\
                        .groupBy('household_id')\
                        .agg(F.sum('net_spend_amt').alias('WKND_FLAG_N_SPEND'), \
-                       F.count_distinct('unique_transaction_uid').alias('WKND_FLAG_N_VISITS'), \
+                       F.count_distinct('transaction_uid').alias('WKND_FLAG_N_VISITS'), \
                         F.sum('unit').alias('WKND_FLAG_N_UNITS'))
                                                
 wkday_df = wkday_df.join(total_df, on='household_id', how='inner')
@@ -1620,7 +1620,7 @@ wkday_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_wkday
 l3_df = full_flag_df.filter(F.col('last_3_flag') == 'Y')\
                        .groupBy('household_id')\
                        .agg(F.sum('net_spend_amt').alias('L3_SPEND'), \
-                       F.count_distinct('unique_transaction_uid').alias('L3_VISITS'), \
+                       F.count_distinct('transaction_uid').alias('L3_VISITS'), \
                         F.sum('unit').alias('L3_UNITS'))
                                                
 l3_df = l3_df.join(total_df, on='household_id', how='inner')
@@ -1642,7 +1642,7 @@ l3_df = l3_df.withColumn('L3_SPV',F.when((F.col('L3_VISITS').isNull()) | (F.col(
 l6_df = full_flag_df.filter(F.col('last_6_flag') == 'Y')\
                        .groupBy('household_id')\
                        .agg(F.sum('net_spend_amt').alias('L6_SPEND'), \
-                       F.count_distinct('unique_transaction_uid').alias('L6_VISITS'), \
+                       F.count_distinct('transaction_uid').alias('L6_VISITS'), \
                         F.sum('unit').alias('L6_UNITS'))
                                                
 l6_df = l6_df.join(total_df, on='household_id', how='inner')
@@ -1663,7 +1663,7 @@ l6_df = l6_df.withColumn('L6_SPV',F.when((F.col('L6_VISITS').isNull()) | (F.col(
 l9_df = full_flag_df.filter(F.col('last_9_flag') == 'Y')\
                        .groupBy('household_id')\
                        .agg(F.sum('net_spend_amt').alias('L9_SPEND'), \
-                       F.count_distinct('unique_transaction_uid').alias('L9_VISITS'), \
+                       F.count_distinct('transaction_uid').alias('L9_VISITS'), \
                         F.sum('unit').alias('L9_UNITS'))
                                                
 l9_df = l9_df.join(total_df, on='household_id', how='inner')
@@ -1695,7 +1695,7 @@ l9_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_year_l9_agg_d
 # DBTITLE 1,Store Format
 store_format_df = full_flag_df.groupBy('household_id','format_name')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                                                
 store_format_df = store_format_df.join(total_df, on='household_id', how='inner')
@@ -1750,7 +1750,7 @@ pivoted_store_format_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkra
 
 store_region_df = full_flag_df.groupBy('household_id','store_region')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                                                
 store_region_df = store_region_df.join(total_df, on='household_id', how='inner')
@@ -1808,7 +1808,7 @@ pivoted_store_region_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkra
 # DBTITLE 1,Premium / Budget Spend
 price_level_df = full_flag_df.groupBy('household_id','price_level')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                                                
 price_level_df = price_level_df.join(total_df, on='household_id', how='inner')
@@ -1871,7 +1871,7 @@ pivoted_price_level_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai
 
 payment_df = full_flag_df.groupBy('household_id','payment_flag')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                                                
 payment_df = payment_df.join(total_df, on='household_id', how='inner')
@@ -1940,7 +1940,7 @@ pivoted_payment_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_
 # DBTITLE 1,Promo General
 discount_promo_df = full_flag_df.groupBy('household_id','promo_flag')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                                                
 discount_promo_df = discount_promo_df.join(total_df, on='household_id', how='inner')
@@ -2001,7 +2001,7 @@ pivoted_discount_promo_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatk
 l3_promo_df = full_flag_df.filter(F.col('last_3_flag') == 'Y')\
                        .groupBy('household_id','promo_flag')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                        
 l3_promo_df = l3_promo_df.join(total_df, on='household_id', how='inner')
@@ -2047,7 +2047,7 @@ for c in pivot_columns:
 l6_promo_df = full_flag_df.filter(F.col('last_6_flag') == 'Y')\
                        .groupBy('household_id','promo_flag')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                        
 l6_promo_df = l6_promo_df.join(total_df, on='household_id', how='inner')
@@ -2094,7 +2094,7 @@ for c in pivot_columns:
 l9_promo_df = full_flag_df.filter(F.col('last_9_flag') == 'Y')\
                        .groupBy('household_id','promo_flag')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                        
 l9_promo_df = l9_promo_df.join(total_df, on='household_id', how='inner')
@@ -2148,7 +2148,7 @@ pivoted_l9_promo_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th
 # DBTITLE 1,Promo Time of Day
 time_promo_df = full_flag_df.groupBy('household_id','time_of_day','promo_flag')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                                                
 time_promo_df = time_promo_df.join(total_df, on='household_id', how='inner')
@@ -2257,7 +2257,7 @@ pivoted_l9_promo_item_df.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkr
 last_weekend_promo_df = full_flag_df.filter(F.col('last_weekend_flag') == 'Y')\
                        .groupBy('household_id','promo_flag')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
-                       F.count_distinct('unique_transaction_uid').alias('Visits'), \
+                       F.count_distinct('transaction_uid').alias('Visits'), \
                         F.sum('unit').alias('Units'))
                        
 last_weekend_promo_df = last_weekend_promo_df.join(total_df, on='household_id', how='inner')

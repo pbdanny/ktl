@@ -22,6 +22,14 @@ spark = SparkSession.builder.appName("lmp").getOrCreate()
 
 # COMMAND ----------
 
+spark.table("tdm_seg.kritawatkrai_th_year_store_format_agg_data_tmp").display()
+
+# COMMAND ----------
+
+spark.table("tdm_seg.v_latest_txn118wk").printSchema()
+
+# COMMAND ----------
+
 from src.utils import conf
 
 conf_path = "../config/feature_migration.json"

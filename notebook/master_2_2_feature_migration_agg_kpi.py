@@ -129,10 +129,14 @@ storage.save_hive(wkday_kpi, conf_mapper, "feat_agg_wkday_kpi")
 
 # COMMAND ----------
 
-l3_kpi = prod_hierarcy_recency.get_agg_prd_hier_recency(spark, conf_mapper, txn, "last_3_flag")
-l6_kpi = prod_hierarcy_recency.get_agg_prd_hier_recency(spark, conf_mapper, txn, "last_6_flag")
-l9_kpi = prod_hierarcy_recency.get_agg_prd_hier_recency(spark, conf_mapper, txn, "last_9_flag")
+l3_kpi = time_period_recency.get_agg_recency(spark, conf_mapper, txn, "last_3_flag")
+l6_kpi = time_period_recency.get_agg_recency(spark, conf_mapper, txn, "last_6_flag")
+l9_kpi = time_period_recency.get_agg_recency(spark, conf_mapper, txn, "last_9_flag")
 
 storage.save_hive(l3_kpi, conf_mapper, "feat_agg_l3_kpi")
 storage.save_hive(l6_kpi, conf_mapper, "feat_agg_l6_kpi")
 storage.save_hive(l9_kpi, conf_mapper, "feat_agg_l9_kpi")
+
+# COMMAND ----------
+
+

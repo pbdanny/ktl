@@ -46,7 +46,9 @@ def get_agg_store_format(spark, conf_mapper, txn):
                .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
                .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
-    pivot_columns = store_format_df.select("store_format_online_subchannel_other").distinct().rdd.flatMap(lambda x: x).collect()
+    pivot_columns = store_format_df\
+                    .where(F.col("store_format_online_subchannel_other").isNotNull())\
+                    .select("store_format_online_subchannel_other").distinct().rdd.flatMap(lambda x: x).collect()
     pivoted_store_format_df = store_format_df.groupBy("household_id").pivot("store_format_online_subchannel_other", pivot_columns).agg(
         F.first("Spend").alias("Spend"),
         F.first("Visits").alias("Visits"),
@@ -97,7 +99,8 @@ def get_agg_store_region(spark, conf_mapper, txn):
                 .withColumn('PCT_Visits',F.col('Visits') * 100 /F.col('Total_Visits'))\
                 .withColumn('PCT_Units',F.col('Units') * 100 /F.col('Total_Units'))
 
-    pivot_columns = store_region_df.select("store_region").distinct().rdd.flatMap(lambda x: x).collect()
+    pivot_columns = store_region_df.where(F.col("store_region").isNotNull())\
+                                 .select("store_region").distinct().rdd.flatMap(lambda x: x).collect()
     pivoted_store_region_df = store_region_df.groupBy("household_id").pivot("store_region", pivot_columns).agg(
         F.first("Spend").alias("Spend"),
         F.first("Visits").alias("Visits"),

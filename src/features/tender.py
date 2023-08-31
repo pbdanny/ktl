@@ -13,6 +13,7 @@ def get_agg_tender(spark, conf_mapper, txn):
     """
     """
     from pyspark.sql import functions as F
+    txn = txn.where(F.col("household_id") != -1)
 
     payment_df = txn.groupBy('household_id','payment_flag')\
                         .agg(F.sum('net_spend_amt').alias('Spend'), \

@@ -13,6 +13,7 @@ def get_agg_promo(spark, conf_mapper, txn):
     """
     """
     from pyspark.sql import functions as F
+    txn = txn.where(F.col("household_id") != -1)
 
     discount_promo_df = txn.groupBy('household_id','promo_flag')\
                         .agg(F.sum('net_spend_amt').alias('Spend'), \
@@ -73,6 +74,7 @@ def get_agg_promo_time_of_day(spark, conf_mapper, txn):
     """
     """
     from pyspark.sql import functions as F
+    txn = txn.where(F.col("household_id") != -1)
 
     time_promo_df = txn.groupBy('household_id','time_of_day','promo_flag')\
                        .agg(F.sum('net_spend_amt').alias('Spend'), \
@@ -127,6 +129,7 @@ def get_agg_promo_last_wkend(spark, conf_mapper, txn):
     """
     """
     from pyspark.sql import functions as F
+    txn = txn.where(F.col("household_id") != -1)
 
     total_df = get_agg_total_store(spark, conf_mapper, txn)
 
@@ -179,6 +182,8 @@ def get_agg_promo_recency(spark, conf_mapper, txn, recency_col_nm:str):
     """
     """
     from pyspark.sql import functions as F
+    txn = txn.where(F.col("household_id") != -1)    
+    
     MAPPER_RECENCY_NM_FEATURE_NM = {"":"",
                                     "last_3_flag": "L3",
                                     "last_6_flag": "L6",
@@ -236,6 +241,7 @@ def get_agg_promo_item_recency(spark, conf_mapper, txn, recency_col_nm:str):
     """
     """
     from pyspark.sql import functions as F
+    txn = txn.where(F.col("household_id") != -1)
 
     MAPPER_RECENCY_NM_FEATURE_NM = {"":"",
                                     "last_3_flag": "L3",

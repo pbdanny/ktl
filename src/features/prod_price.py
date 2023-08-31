@@ -13,6 +13,8 @@ def get_agg_prod_price(spark, conf_mapper, txn):
     """
     """
     from pyspark.sql import functions as F
+    
+    txn = txn.where(F.col("household_id") != -1)
 
     price_level_df = txn.groupBy('household_id','price_level')\
                         .agg(F.sum('net_spend_amt').alias('Spend'), \
@@ -20,7 +22,7 @@ def get_agg_prod_price(spark, conf_mapper, txn):
                             F.sum('unit').alias('Units'))
     total_df = get_agg_total_store(spark, conf_mapper, txn)
                                             
-    price_level_df = price_level_df.join(total_df, on='household_id', how='inner')
+    price_level_df = price_level_df.join(total_df.where(F.col("household_id") != -1), on='household_id', how='inner')
 
     price_level_df = price_level_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Visits') == 0), 0)\
                                     .otherwise(F.col('Spend') /F.col('Visits')))\

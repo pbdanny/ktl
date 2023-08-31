@@ -192,9 +192,9 @@ def get_agg_promo_recency(spark, conf_mapper, txn, recency_col_nm:str):
 
     l3_promo_df = txn.filter(F.col(recency_col_nm) == 'Y')\
                     .groupBy('household_id','promo_flag')\
-                    .agg(F.sum('net_spend_amt').alias(f'{features_rcncy_col_nm}_SPEND'), \
-                    F.count_distinct('transaction_uid').alias(f'{features_rcncy_col_nm}_VISITS'), \
-                    F.sum('unit').alias(f'{features_rcncy_col_nm}_UNITS'))
+                    .agg(F.sum('net_spend_amt').alias('Spend'), \
+                         F.count_distinct('transaction_uid').alias('Visits'), \
+                         F.sum('unit').alias('Units'))
 
     total_df = get_agg_total_store(spark, conf_mapper, txn)
 

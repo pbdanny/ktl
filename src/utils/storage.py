@@ -16,6 +16,7 @@ def save_hive(sf, conf_mapper, name):
     (sf
      .write
      .mode("overwrite")
+     .option("overwriteSchema", "true")
      .saveAsTable(conf_mapper["storage"]["hive"]["prefix"] + name)
     )
     return

@@ -107,7 +107,7 @@ map_prd = snap_txn.map_txn_prod_premium(spark, conf_mapper, map_time)
 map_tndr = snap_txn.map_txn_tender(spark, conf_mapper, map_prd)
 map_cust = snap_txn.map_txn_cust_issue_first_txn(spark, conf_mapper, map_tndr)
 
-save_hive(map_time, conf_mapper, "snap_txn_map_details")
+save_hive(map_cust, conf_mapper, "snap_txn_map_details")
 
 # COMMAND ----------
 
@@ -154,10 +154,6 @@ conf_mapper = conf.conf_reader(conf_path)
 
 # COMMAND ----------
 
-conf_mapper
-
-# COMMAND ----------
-
 txn = spark.table(conf_mapper["storage"]["hive"]["snap_txn_map_promo"])
 
 # COMMAND ----------
@@ -181,7 +177,3 @@ conf.conf_writer(conf_mapper, conf_path)
 # COMMAND ----------
 
 conf_mapper
-
-# COMMAND ----------
-
-

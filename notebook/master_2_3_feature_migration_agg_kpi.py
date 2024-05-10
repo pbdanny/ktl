@@ -62,10 +62,6 @@ storage.save_hive(store_region_kpi, conf_mapper, "feat_agg_store_region")
 
 # COMMAND ----------
 
-# MAGIC %md ##---- To test code
-
-# COMMAND ----------
-
 # MAGIC %md ###Premium / Budget prod
 
 # COMMAND ----------
@@ -135,3 +131,7 @@ storage.save_hive(promo_item_l9, conf_mapper, "feat_agg_promo_item_l9")
 
 promo_last_wkend = promo_recency.get_agg_promo_last_wkend(spark, conf_mapper, txn)
 storage.save_hive(promo_last_wkend, conf_mapper, "feat_agg_promo_last_wkend")
+
+# COMMAND ----------
+
+

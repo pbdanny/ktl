@@ -22,7 +22,44 @@ spark = SparkSession.builder.appName("lmp").getOrCreate()
 
 # COMMAND ----------
 
-spark.table("tdm_seg.kritawatkrai_th_year_store_format_agg_data_tmp").display()
+# MAGIC %sql
+# MAGIC select distinct price_level
+# MAGIC from tdm_seg.th_lotuss_thanakrit_ktl_snap_txn_add_dummy_hh_combine_prod_hier
+# MAGIC where household_id != -1;
+
+# COMMAND ----------
+
+    price_level_df = txn.where(F.col("household_id") != -1).groupBy('household_id','price_level')\
+                        .agg(F.sum('net_spend_amt').alias('Spend'), \
+                        F.count_distinct('transaction_uid').alias('Visits'), \
+                            F.sum('unit').alias('Units'))
+
+# COMMAND ----------
+
+    product_df = (spark.table('tdm.v_prod_dim_c')
+                .select(['upc_id','brand_name','division_id','division_name','department_id','department_name','department_code','section_id','section_name','section_code','class_id','class_name','class_code','subclass_id','subclass_name','subclass_code'])
+                .filter(F.col('division_id').isin([1,2,3,4,9,10,13]))
+                .filter(F.col('country').isin("th"))
+    )
+
+    temp_prod_df = product_df.select('upc_id', 'subclass_code', 'subclass_name')
+
+    premium_prod_df = (temp_prod_df
+                    .filter(F.col('subclass_name').ilike('%PREMIUM%'))
+                    .filter(~F.col('subclass_name').ilike('%COUPON%'))
+                    .withColumn('price_level',F.lit('PREMIUM'))
+                    ).distinct()
+
+    budget_prod_df = (temp_prod_df
+                    .filter(F.col('subclass_name').rlike('(?i)(budget|basic|value)'))
+                    .withColumn('price_level',F.lit('BUDGET'))
+                    ).distinct()
+
+    price_level_df = premium_prod_df.unionByName(budget_prod_df)
+
+# COMMAND ----------
+
+premium_prod_df.display()
 
 # COMMAND ----------
 
@@ -64,7 +101,10 @@ max_week_december = (scope_date_dim
 
 # COMMAND ----------
 
-
+# MAGIC %sql
+# MAGIC select distinct subclass_code, subclass_name, class_name
+# MAGIC from tdm.v_prod_dim_c
+# MAGIC where subclass_name like "%PANTS%";
 
 # COMMAND ----------
 

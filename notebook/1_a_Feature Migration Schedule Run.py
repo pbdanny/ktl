@@ -784,9 +784,9 @@ sec_exclude = ['3_7_130', '3_7_131', '3_8_132', '3_9_81', '10_43_34', '3_14_78',
 div_cust = product_df.select('division_id').distinct()\
                      .withColumn('household_id',F.lit(-1))
 1
-dep_schema = StructType([
-    StructField("department_code", StringType(), nullable=False),
-    StructField("household_id", IntegerType(), nullable=False)
+dep_schema = F.StructType([
+    T.StructField("department_code", T.StringType(), nullable=False),
+    T.StructField("household_id", T.IntegerType(), nullable=False)
 ])
 
 missing_dep = [("2_33", -1)]
@@ -797,9 +797,9 @@ dep_cust = product_df.select('department_code').filter(~(F.col('department_code'
                           .withColumn('household_id',F.lit(-1))\
                           .unionByName(missing_dep_df)
 
-sec_schema = StructType([
-    StructField("section_code", StringType(), nullable=False),
-    StructField("household_id", IntegerType(), nullable=False)
+sec_schema = F.StructType([
+    T.StructField("section_code", T.StringType(), nullable=False),
+    T.StructField("household_id", T.IntegerType(), nullable=False)
 ])
 
 missing_sec = [("3_14_80", -1),
@@ -888,15 +888,15 @@ div_df = div_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Vis
 
 pivot_columns = div_df.select("division_id").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_div_df = div_df.groupBy("household_id").pivot("division_id", pivot_columns).agg(
-    first("Spend").alias("Spend"),
-    first("Visits").alias("Visits"),
-    first("Units").alias("Units"),
-    first("SPV").alias("SPV"),
-    first("UPV").alias("UPV"),
-    first("SPU").alias("SPU"),
-    first("PCT_Spend").alias("PCT_Spend"),
-    first("PCT_Visits").alias("PCT_Visits"),
-    first("PCT_Units").alias("PCT_Units")
+    F.first("Spend").alias("Spend"),
+    F.first("Visits").alias("Visits"),
+    F.first("Units").alias("Units"),
+    F.first("SPV").alias("SPV"),
+    F.first("UPV").alias("UPV"),
+    F.first("SPU").alias("SPU"),
+    F.first("PCT_Spend").alias("PCT_Spend"),
+    F.first("PCT_Visits").alias("PCT_Visits"),
+    F.first("PCT_Units").alias("PCT_Units")
 ).fillna(0)
 
 for c in pivot_columns:
@@ -949,15 +949,15 @@ l3_div_df = l3_div_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.co
 
 pivot_columns = l3_div_df.select("division_id").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_l3_div_df = l3_div_df.groupBy("household_id").pivot("division_id", pivot_columns).agg(
-    first("Spend").alias("Spend"),
-    first("Visits").alias("Visits"),
-    first("Units").alias("Units"),
-    first("SPV").alias("SPV"),
-    first("UPV").alias("UPV"),
-    first("SPU").alias("SPU"),
-    first("PCT_Spend").alias("PCT_Spend"),
-    first("PCT_Visits").alias("PCT_Visits"),
-    first("PCT_Units").alias("PCT_Units")
+    F.first("Spend").alias("Spend"),
+    F.first("Visits").alias("Visits"),
+    F.first("Units").alias("Units"),
+    F.first("SPV").alias("SPV"),
+    F.first("UPV").alias("UPV"),
+    F.first("SPU").alias("SPU"),
+    F.first("PCT_Spend").alias("PCT_Spend"),
+    F.first("PCT_Visits").alias("PCT_Visits"),
+    F.first("PCT_Units").alias("PCT_Units")
 ).fillna(0)
 
 for c in pivot_columns:
@@ -1001,15 +1001,15 @@ l6_div_df = l6_div_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.co
 
 pivot_columns = l6_div_df.select("division_id").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_l6_div_df = l6_div_df.groupBy("household_id").pivot("division_id", pivot_columns).agg(
-    first("Spend").alias("Spend"),
-    first("Visits").alias("Visits"),
-    first("Units").alias("Units"),
-    first("SPV").alias("SPV"),
-    first("UPV").alias("UPV"),
-    first("SPU").alias("SPU"),
-    first("PCT_Spend").alias("PCT_Spend"),
-    first("PCT_Visits").alias("PCT_Visits"),
-    first("PCT_Units").alias("PCT_Units")
+    F.first("Spend").alias("Spend"),
+    F.first("Visits").alias("Visits"),
+    F.first("Units").alias("Units"),
+    F.first("SPV").alias("SPV"),
+    F.first("UPV").alias("UPV"),
+    F.first("SPU").alias("SPU"),
+    F.first("PCT_Spend").alias("PCT_Spend"),
+    F.first("PCT_Visits").alias("PCT_Visits"),
+    F.first("PCT_Units").alias("PCT_Units")
 ).fillna(0)
 
 for c in pivot_columns:
@@ -1055,15 +1055,15 @@ l9_div_df = l9_div_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.co
 
 pivot_columns = l9_div_df.select("division_id").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_l9_div_df = l9_div_df.groupBy("household_id").pivot("division_id", pivot_columns).agg(
-    first("Spend").alias("Spend"),
-    first("Visits").alias("Visits"),
-    first("Units").alias("Units"),
-    first("SPV").alias("SPV"),
-    first("UPV").alias("UPV"),
-    first("SPU").alias("SPU"),
-    first("PCT_Spend").alias("PCT_Spend"),
-    first("PCT_Visits").alias("PCT_Visits"),
-    first("PCT_Units").alias("PCT_Units")
+    F.first("Spend").alias("Spend"),
+    F.first("Visits").alias("Visits"),
+    F.first("Units").alias("Units"),
+    F.first("SPV").alias("SPV"),
+    F.first("UPV").alias("UPV"),
+    F.first("SPU").alias("SPU"),
+    F.first("PCT_Spend").alias("PCT_Spend"),
+    F.first("PCT_Visits").alias("PCT_Visits"),
+    F.first("PCT_Units").alias("PCT_Units")
 ).fillna(0)
 
 for c in pivot_columns:
@@ -1121,15 +1121,15 @@ dep_df = dep_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Vis
 
 pivot_columns = dep_df.select("grouped_department_code").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_dep_df = dep_df.groupBy("household_id").pivot("grouped_department_code", pivot_columns).agg(
-    first("Spend").alias("Spend"),
-    first("Visits").alias("Visits"),
-    first("Units").alias("Units"),
-    first("SPV").alias("SPV"),
-    first("UPV").alias("UPV"),
-    first("SPU").alias("SPU"),
-    first("PCT_Spend").alias("PCT_Spend"),
-    first("PCT_Visits").alias("PCT_Visits"),
-    first("PCT_Units").alias("PCT_Units")
+    F.first("Spend").alias("Spend"),
+    F.first("Visits").alias("Visits"),
+    F.first("Units").alias("Units"),
+    F.first("SPV").alias("SPV"),
+    F.first("UPV").alias("UPV"),
+    F.first("SPU").alias("SPU"),
+    F.first("PCT_Spend").alias("PCT_Spend"),
+    F.first("PCT_Visits").alias("PCT_Visits"),
+    F.first("PCT_Units").alias("PCT_Units")
 ).fillna(0)
 
 for c in pivot_columns:
@@ -1180,15 +1180,15 @@ sec_df = sec_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('Vis
 
 pivot_columns = sec_df.select("grouped_section_code").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_sec_df = sec_df.groupBy("household_id").pivot("grouped_section_code", pivot_columns).agg(
-    first("Spend").alias("Spend"),
-    first("Visits").alias("Visits"),
-    first("Units").alias("Units"),
-    first("SPV").alias("SPV"),
-    first("UPV").alias("UPV"),
-    first("SPU").alias("SPU"),
-    first("PCT_Spend").alias("PCT_Spend"),
-    first("PCT_Visits").alias("PCT_Visits"),
-    first("PCT_Units").alias("PCT_Units")
+    F.first("Spend").alias("Spend"),
+    F.first("Visits").alias("Visits"),
+    F.first("Units").alias("Units"),
+    F.first("SPV").alias("SPV"),
+    F.first("UPV").alias("UPV"),
+    F.first("SPU").alias("SPU"),
+    F.first("PCT_Spend").alias("PCT_Spend"),
+    F.first("PCT_Visits").alias("PCT_Visits"),
+    F.first("PCT_Units").alias("PCT_Units")
 ).fillna(0)
 
 for c in pivot_columns:
@@ -1249,18 +1249,18 @@ monthly_df = full_flag_df.groupBy('household_id', 'end_month_date')\
                                 .fillna(0)
 
 monthly_df = monthly_df.groupBy('household_id').agg(
-        round(F.avg(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("AVG_SPEND_MNTH"),
-        round(F.stddev(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("SD_SPEND_MNTH"),
-        round(F.min(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("MIN_SPEND_MNTH"),
-        round(F.max(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("MAX_SPEND_MNTH"),
-        round(F.avg(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("AVG_VISITS_MNTH"),
-        round(F.stddev(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("SD_VISITS_MNTH"),
-        round(F.min(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("MIN_VISITS_MNTH"),
-        round(F.max(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("MAX_VISITS_MNTH"),
-        round(F.avg(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("AVG_UNITS_MNTH"),
-        round(F.stddev(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("SD_UNITS_MNTH"),
-        round(F.min(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("MIN_UNITS_MNTH"),
-        round(F.max(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("MAX_UNITS_MNTH")
+        F.round(F.avg(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("AVG_SPEND_MNTH"),
+       F.round(F.stddev(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("SD_SPEND_MNTH"),
+       F.round(F.min(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("MIN_SPEND_MNTH"),
+       F.round(F.max(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("MAX_SPEND_MNTH"),
+       F.round(F.avg(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("AVG_VISITS_MNTH"),
+       F.round(F.stddev(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("SD_VISITS_MNTH"),
+       F.round(F.min(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("MIN_VISITS_MNTH"),
+       F.round(F.max(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("MAX_VISITS_MNTH"),
+       F.round(F.avg(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("AVG_UNITS_MNTH"),
+       F.round(F.stddev(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("SD_UNITS_MNTH"),
+       F.round(F.min(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("MIN_UNITS_MNTH"),
+       F.round(F.max(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("MAX_UNITS_MNTH")
 ).fillna(0)
 
     
@@ -1392,12 +1392,12 @@ weekly_df = full_flag_df.groupBy('household_id', 'week_of_month')\
                                 .fillna(0)
 
 weekly_df = weekly_df.groupBy('household_id').agg(
-        round(F.avg(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("AVG_SPEND_WK"),
-        round(F.stddev(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("SD_SPEND_WK"),
-        round(F.avg(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("AVG_VISITS_WK"),
-        round(F.stddev(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("SD_VISITS_WK"),
-        round(F.avg(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("AVG_UNITS_WK"),
-        round(F.stddev(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("SD_UNITS_WK")
+       F.round(F.avg(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("AVG_SPEND_WK"),
+       F.round(F.stddev(F.coalesce(F.col("Spend"),F.lit(0))), 2).alias("SD_SPEND_WK"),
+       F.round(F.avg(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("AVG_VISITS_WK"),
+       F.round(F.stddev(F.coalesce(F.col("Visits"),F.lit(0))), 2).alias("SD_VISITS_WK"),
+       F.round(F.avg(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("AVG_UNITS_WK"),
+       F.round(F.stddev(F.coalesce(F.col("Units"),F.lit(0))), 2).alias("SD_UNITS_WK")
     ).fillna(0)
               
 
@@ -1433,15 +1433,15 @@ fest_df = fest_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.col('V
 
 pivot_columns = fest_df.select("fest_flag").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_fest_df = fest_df.groupBy("household_id").pivot("fest_flag", pivot_columns).agg(
-    first("Spend").alias("Spend"),
-    first("Visits").alias("Visits"),
-    first("Units").alias("Units"),
-    first("SPV").alias("SPV"),
-    first("UPV").alias("UPV"),
-    first("SPU").alias("SPU"),
-    first("PCT_Spend").alias("PCT_Spend"),
-    first("PCT_Visits").alias("PCT_Visits"),
-    first("PCT_Units").alias("PCT_Units")
+  F.first("Spend").alias("Spend"),
+  F.first("Visits").alias("Visits"),
+  F.first("Units").alias("Units"),
+  F.first("SPV").alias("SPV"),
+  F.first("UPV").alias("UPV"),
+  F.first("SPU").alias("SPU"),
+  F.first("PCT_Spend").alias("PCT_Spend"),
+  F.first("PCT_Visits").alias("PCT_Visits"),
+  F.first("PCT_Units").alias("PCT_Units")
 ).fillna(0)
 
 for c in pivot_columns:
@@ -1490,15 +1490,15 @@ time_day_df = time_day_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (
 
 pivot_columns = time_day_df.select("time_of_day").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_time_day_df = time_day_df.groupBy("household_id").pivot("time_of_day", pivot_columns).agg(
-    first("Spend").alias("Spend"),
-    first("Visits").alias("Visits"),
-    first("Units").alias("Units"),
-    first("SPV").alias("SPV"),
-    first("UPV").alias("UPV"),
-    first("SPU").alias("SPU"),
-    first("PCT_Spend").alias("PCT_Spend"),
-    first("PCT_Visits").alias("PCT_Visits"),
-    first("PCT_Units").alias("PCT_Units"),
+  F.first("Spend").alias("Spend"),
+  F.first("Visits").alias("Visits"),
+  F.first("Units").alias("Units"),
+  F.first("SPV").alias("SPV"),
+  F.first("UPV").alias("UPV"),
+  F.first("SPU").alias("SPU"),
+  F.first("PCT_Spend").alias("PCT_Spend"),
+  F.first("PCT_Visits").alias("PCT_Visits"),
+  F.first("PCT_Units").alias("PCT_Units"),
 ).fillna(0)
 
 for c in pivot_columns:
@@ -1889,15 +1889,15 @@ payment_df = payment_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (F.
 
 pivot_columns = payment_df.select("payment_flag").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_payment_df = payment_df.groupBy("household_id").pivot("payment_flag", pivot_columns).agg(
-    first("Spend").alias("Spend"),
-    first("Visits").alias("Visits"),
-    first("Units").alias("Units"),
-    first("SPV").alias("SPV"),
-    first("UPV").alias("UPV"),
-    first("SPU").alias("SPU"),
-    first("PCT_Spend").alias("PCT_Spend"),
-    first("PCT_Visits").alias("PCT_Visits"),
-    first("PCT_Units").alias("PCT_Units")
+  F.first("Spend").alias("Spend"),
+  F.first("Visits").alias("Visits"),
+  F.first("Units").alias("Units"),
+  F.first("SPV").alias("SPV"),
+  F.first("UPV").alias("UPV"),
+  F.first("SPU").alias("SPU"),
+  F.first("PCT_Spend").alias("PCT_Spend"),
+  F.first("PCT_Visits").alias("PCT_Visits"),
+  F.first("PCT_Units").alias("PCT_Units")
 ).fillna(0)
 
 for c in pivot_columns:
@@ -1958,15 +1958,15 @@ discount_promo_df = discount_promo_df.withColumn('SPV',F.when((F.col('Visits').i
 
 pivot_columns = discount_promo_df.select("promo_flag").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_discount_promo_df = discount_promo_df.groupBy("household_id").pivot("promo_flag", pivot_columns).agg(
-    first("Spend").alias("Spend"),
-    first("Visits").alias("Visits"),
-    first("Units").alias("Units"),
-    first("SPV").alias("SPV"),
-    first("UPV").alias("UPV"),
-    first("SPU").alias("SPU"),
-    first("PCT_Spend").alias("PCT_Spend"),
-    first("PCT_Visits").alias("PCT_Visits"),
-    first("PCT_Units").alias("PCT_Units")
+  F.first("Spend").alias("Spend"),
+  F.first("Visits").alias("Visits"),
+  F.first("Units").alias("Units"),
+  F.first("SPV").alias("SPV"),
+  F.first("UPV").alias("UPV"),
+  F.first("SPU").alias("SPU"),
+  F.first("PCT_Spend").alias("PCT_Spend"),
+  F.first("PCT_Visits").alias("PCT_Visits"),
+  F.first("PCT_Units").alias("PCT_Units")
 ).fillna(0)
 
 for c in pivot_columns:
@@ -2019,15 +2019,15 @@ l3_promo_df = l3_promo_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (
 
 pivot_columns = l3_promo_df.select("promo_flag").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_l3_promo_df = l3_promo_df.groupBy("household_id").pivot("promo_flag", pivot_columns).agg(
-    first("Spend").alias("Spend"),
-    first("Visits").alias("Visits"),
-    first("Units").alias("Units"),
-    first("SPV").alias("SPV"),
-    first("UPV").alias("UPV"),
-    first("SPU").alias("SPU"),
-    first("PCT_Spend").alias("PCT_Spend"),
-    first("PCT_Visits").alias("PCT_Visits"),
-    first("PCT_Units").alias("PCT_Units")
+  F.first("Spend").alias("Spend"),
+  F.first("Visits").alias("Visits"),
+  F.first("Units").alias("Units"),
+  F.first("SPV").alias("SPV"),
+  F.first("UPV").alias("UPV"),
+  F.first("SPU").alias("SPU"),
+  F.first("PCT_Spend").alias("PCT_Spend"),
+  F.first("PCT_Visits").alias("PCT_Visits"),
+  F.first("PCT_Units").alias("PCT_Units")
 ).fillna(0)
 
 for c in pivot_columns:
@@ -2066,15 +2066,15 @@ l6_promo_df = l6_promo_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (
 
 pivot_columns = l6_promo_df.select("promo_flag").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_l6_promo_df = l6_promo_df.groupBy("household_id").pivot("promo_flag", pivot_columns).agg(
-    first("Spend").alias("Spend"),
-    first("Visits").alias("Visits"),
-    first("Units").alias("Units"),
-    first("SPV").alias("SPV"),
-    first("UPV").alias("UPV"),
-    first("SPU").alias("SPU"),
-    first("PCT_Spend").alias("PCT_Spend"),
-    first("PCT_Visits").alias("PCT_Visits"),
-    first("PCT_Units").alias("PCT_Units")
+  F.first("Spend").alias("Spend"),
+  F.first("Visits").alias("Visits"),
+  F.first("Units").alias("Units"),
+  F.first("SPV").alias("SPV"),
+  F.first("UPV").alias("UPV"),
+  F.first("SPU").alias("SPU"),
+  F.first("PCT_Spend").alias("PCT_Spend"),
+  F.first("PCT_Visits").alias("PCT_Visits"),
+  F.first("PCT_Units").alias("PCT_Units")
 ).fillna(0)
 
 for c in pivot_columns:
@@ -2113,15 +2113,15 @@ l9_promo_df = l9_promo_df.withColumn('SPV',F.when((F.col('Visits').isNull()) | (
 
 pivot_columns = l9_promo_df.select("promo_flag").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_l9_promo_df = l9_promo_df.groupBy("household_id").pivot("promo_flag", pivot_columns).agg(
-    first("Spend").alias("Spend"),
-    first("Visits").alias("Visits"),
-    first("Units").alias("Units"),
-    first("SPV").alias("SPV"),
-    first("UPV").alias("UPV"),
-    first("SPU").alias("SPU"),
-    first("PCT_Spend").alias("PCT_Spend"),
-    first("PCT_Visits").alias("PCT_Visits"),
-    first("PCT_Units").alias("PCT_Units")
+  F.first("Spend").alias("Spend"),
+  F.first("Visits").alias("Visits"),
+  F.first("Units").alias("Units"),
+  F.first("SPV").alias("SPV"),
+  F.first("UPV").alias("UPV"),
+  F.first("SPU").alias("SPU"),
+  F.first("PCT_Spend").alias("PCT_Spend"),
+  F.first("PCT_Visits").alias("PCT_Visits"),
+  F.first("PCT_Units").alias("PCT_Units")
 ).fillna(0)
 
 for c in pivot_columns:
@@ -2168,15 +2168,15 @@ time_promo_df = time_promo_df.withColumn('SPV',F.when((F.col('Visits').isNull())
 
 pivot_columns = time_promo_df.select("time_promo").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_time_promo_df = time_promo_df.groupBy("household_id").pivot("time_promo", pivot_columns).agg(
-    first("Spend").alias("Spend"),
-    first("Visits").alias("Visits"),
-    first("Units").alias("Units"),
-    first("SPV").alias("SPV"),
-    first("UPV").alias("UPV"),
-    first("SPU").alias("SPU"),
-    first("PCT_Spend").alias("PCT_Spend"),
-    first("PCT_Visits").alias("PCT_Visits"),
-    first("PCT_Units").alias("PCT_Units")
+  F.first("Spend").alias("Spend"),
+  F.first("Visits").alias("Visits"),
+  F.first("Units").alias("Units"),
+  F.first("SPV").alias("SPV"),
+  F.first("UPV").alias("UPV"),
+  F.first("SPU").alias("SPU"),
+  F.first("PCT_Spend").alias("PCT_Spend"),
+  F.first("PCT_Visits").alias("PCT_Visits"),
+  F.first("PCT_Units").alias("PCT_Units")
 ).fillna(0)
 
 for c in pivot_columns:
@@ -2206,7 +2206,7 @@ l3_promo_item_df = full_flag_df.filter(F.col('last_3_flag') == 'Y')\
 
 pivot_columns = l3_promo_item_df.select("promo_flag").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_l3_promo_item_df = l3_promo_item_df.groupBy("household_id").pivot("promo_flag", pivot_columns).agg(
-    first("Items")
+  F.first("Items")
 ).fillna(0)
 
 for c in pivot_columns:
@@ -2223,7 +2223,7 @@ l6_promo_item_df = full_flag_df.filter(F.col('last_6_flag') == 'Y')\
 
 pivot_columns = l6_promo_item_df.select("promo_flag").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_l6_promo_item_df = l6_promo_item_df.groupBy("household_id").pivot("promo_flag", pivot_columns).agg(
-    first("Items")
+  F.first("Items")
 ).fillna(0)
 
 for c in pivot_columns:
@@ -2238,7 +2238,7 @@ l9_promo_item_df = full_flag_df.filter(F.col('last_9_flag') == 'Y')\
 
 pivot_columns = l9_promo_item_df.select("promo_flag").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_l9_promo_item_df = l9_promo_item_df.groupBy("household_id").pivot("promo_flag", pivot_columns).agg(
-    first("Items")
+  F.first("Items")
 ).fillna(0)
 
 for c in pivot_columns:
@@ -2275,15 +2275,15 @@ last_weekend_promo_df = last_weekend_promo_df.withColumn('SPV',F.when((F.col('Vi
 
 pivot_columns = last_weekend_promo_df.select("promo_flag").distinct().rdd.flatMap(lambda x: x).collect()
 pivoted_last_weekend_promo_df = last_weekend_promo_df.groupBy("household_id").pivot("promo_flag", pivot_columns).agg(
-    first("Spend").alias("Spend"),
-    first("Visits").alias("Visits"),
-    first("Units").alias("Units"),
-    first("SPV").alias("SPV"),
-    first("UPV").alias("UPV"),
-    first("SPU").alias("SPU"),
-    first("PCT_Spend").alias("PCT_Spend"),
-    first("PCT_Visits").alias("PCT_Visits"),
-    first("PCT_Units").alias("PCT_Units")
+  F.first("Spend").alias("Spend"),
+  F.first("Visits").alias("Visits"),
+  F.first("Units").alias("Units"),
+  F.first("SPV").alias("SPV"),
+  F.first("UPV").alias("UPV"),
+  F.first("SPU").alias("SPU"),
+  F.first("PCT_Spend").alias("PCT_Spend"),
+  F.first("PCT_Visits").alias("PCT_Visits"),
+  F.first("PCT_Units").alias("PCT_Units")
 ).fillna(0)
 
 for c in pivot_columns:

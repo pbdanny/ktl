@@ -1,6 +1,6 @@
 # Databricks notebook source
 # DBTITLE 1,Load Data
-df = spark.table("tdm_seg.kritawatkrai_th_year_full_agg_data_tmp")
+df = spark.table("tdm_dev.th_lotuss_ktl_txn_year_full_agg_data")
 
 # COMMAND ----------
 
@@ -408,3 +408,7 @@ len(features_df.columns)
 # COMMAND ----------
 
 features_df.count()
+
+# COMMAND ----------
+
+

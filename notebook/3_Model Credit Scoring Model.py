@@ -11,12 +11,13 @@ import pickle
 
 # COMMAND ----------
 
-file_path = '/Workspace/Users/kritawats.kraiwitchaicharoen@lotuss.com/Project/(Clone) KTL/Credit_scoring_model'
+# file_path = '/Workspace/Users/kritawats.kraiwitchaicharoen@lotuss.com/Project/(Clone) KTL/Credit_scoring_model'
+file_path = "/Volumes/prod/tdm_dev/edminput/filestore/model/ktl_credit_scoring/"
 
 # COMMAND ----------
 
 # DBTITLE 1,Load Data 
-df = spark.table("tdm_seg.kritawatkrai_th_year_rounded_full_agg_data")
+df = spark.table("tdm_dev.th_lotuss_ktl_txn_year_rounded_full_agg_data")
 
 # COMMAND ----------
 
@@ -382,18 +383,17 @@ def calcScore(proba):
 
 # COMMAND ----------
 
+# pkl_filename1 = file_path + r'/KTL_Credit_Scoring_Final_RF_v1.pkl'
+
 pkl_filename1 = file_path + r'/KTL_Credit_Scoring_Final_RF_v1.pkl'
 
 with open(pkl_filename1, 'rb') as file:
     RF = pickle.load(file) 
 
-
-
 # COMMAND ----------
 
 df_oot = df.select(list(filtered_dic.values()))
 df_oot = df_oot.fillna(-999999)
-
 
 # COMMAND ----------
 
@@ -419,4 +419,4 @@ selected_features.append('Score')
 # COMMAND ----------
 
 results = spark.createDataFrame(df_oot) 
-results.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_credit_prediction")
+# results.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_credit_prediction")

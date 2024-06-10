@@ -15,12 +15,14 @@ warnings.filterwarnings('ignore')
 
 # COMMAND ----------
 
-file_path = '/Workspace/Users/kritawats.kraiwitchaicharoen@lotuss.com/Project/(Clone) KTL/Credit_scoring_model'
+# file_path = '/Workspace/Users/kritawats.kraiwitchaicharoen@lotuss.com/Project/(Clone) KTL/Credit_scoring_model'
+file_path = "/Volumes/prod/tdm_dev/edminput/filestore/model/ktl_income_model"
 
 # COMMAND ----------
 
 # DBTITLE 1,Load Data Set
-df_raw = spark.table("tdm_seg.kritawatkrai_th_year_rounded_full_agg_data")
+# df_raw = spark.table("tdm_seg.kritawatkrai_th_year_rounded_full_agg_data")
+df_raw = spark.table("tdm_dev.th_lotuss_ktl_txn_year_rounded_full_agg_data")
 
 # COMMAND ----------
 
@@ -279,8 +281,8 @@ selected_features.append('Score')
 # COMMAND ----------
 
 # xoot_select.head()
-results = spark.createDataFrame(xoot_select) 
-results.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_income_1_prediction")
+results = spark.createDataFrame(xoot_select)
+# results.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_income_1_prediction")
 
 
 # COMMAND ----------
@@ -427,7 +429,7 @@ selected_features.append('Score')
 
 # xoot_select.head()
 results = spark.createDataFrame(xoot_select) 
-results.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_income_2_prediction")
+# results.write.mode("overwrite").saveAsTable("tdm_seg.kritawatkrai_th_income_2_prediction")
 
 # COMMAND ----------
 

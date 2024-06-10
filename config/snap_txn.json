@@ -1,0 +1,22 @@
+{
+  "MODEL_DATA_DATE": "2024-01-31", 
+  "TBL_DATE_DIM": "prod.tdm.v_th_date_dim", 
+  "TBL_PROD_DIM": "prod.tdm.v_prod_dim_c", 
+  "TBL_TXN_HEAD": "prod.tdm.v_transaction_head", 
+  "TBL_TXN_ITEM": "prod.tdm.v_transaction_item", 
+  "PRODUCT_DIVISION": [1, 2, 3, 4, 9, 10, 13], 
+  "COUNTRY": "th", 
+  "TBL_CUST_ISSUE": "prod.tdm_dev.v_th_central_customer_1st_last_tran",
+  "TBL_STORE_DIM": "prod.tdm.v_store_dim_c",
+  "FORMAT_ID":[1,2,3,4,5],
+  "TBL_CENTRAL_TXN_ITEM": "prod.tdm_dev.v_th_central_transaction_item",
+  "TBL_CENTRAL_CUST_SEG": "prod.tdm_dev.v_th_central_customer_segment",
+  "TBL_TENDER_RESA": "prod.tdm.v_resa_group_resa_tran_tender",
+  "TBL_TENDER_OSM": "prod.tdm_dev.v_oms_group_payment",
+  "TBL_TENDER": "prd.tdm.v_th_transaction_tender",
+  "DEP_EXCLUDE": ["1_36","1_92","13_25","13_32"],
+  "SEC_EXCLUDE": ["3_7_130", "3_7_131", "3_8_132", "3_9_81", "10_43_34", "3_14_78", "13_6_205", "13_67_364",
+    "1_36_708", "1_45_550", "1_92_992", "2_3_245", "2_4_253", "2_66_350", "13_25_249", "2_4_253",
+    "13_25_250", "13_25_251", "13_67_359", "2_66_350", "4_10_84", "4_56_111", "10_46_549",
+    "13_6_316", "13_25_249", "13_25_250", "13_25_251", "13_67_359", "13_32_617", "13_67_360", "2_4_719"]
+}
